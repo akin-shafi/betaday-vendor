@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Plus, Search, Package, Edit, Trash2, Eye, EyeOff, X, RefreshCw } from "lucide-react"
+import { ArrowLeft, Plus, Search, Package, Edit, Trash2, X, RefreshCw } from "lucide-react"
 import { useProducts } from "@/hooks/useProducts"
 import { useBusiness } from "@/hooks/useBusiness"
 import { ConfirmationModal } from "@/components/modals/confirmation-modal"
@@ -292,58 +292,66 @@ export default function ProductsPage() {
                           </span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex items-center space-x-2">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            product.isAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {product.isAvailable ? "Available" : "Unavailable"}
-                        </span>
-                        {product.createdAt && (
-                          <span className="text-xs text-gray-500">
-                            Added {new Date(product.createdAt).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center space-x-1">
-                        <Link href={`/products/view/${product.id}`}>
-                          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </Link>
+                      {/* Availability Toggle - Top Right */}
+                      <div className="flex flex-col items-center space-y-1 ml-4">
                         <button
                           onClick={() => toggleAvailability(product.id)}
                           disabled={isUpdating === product.id}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-                          title={product.isAvailable ? "Hide product" : "Show product"}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 ${
+                            product.isAvailable ? "bg-green-600" : "bg-gray-300"
+                          }`}
                         >
                           {isUpdating === product.id ? (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                          ) : product.isAvailable ? (
-                            <EyeOff className="w-4 h-4" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            </div>
                           ) : (
-                            <Eye className="w-4 h-4" />
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                product.isAvailable ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
                           )}
                         </button>
-                        <Link href={`/products/edit/${product.id}`}>
-                          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        </Link>
-                        <button
-                          onClick={() => handleDeleteClick(product.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete product"
+                        <span
+                          className={`text-xs font-medium ${product.isAvailable ? "text-green-700" : "text-gray-500"}`}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          {product.isAvailable ? "Available" : "Unavailable"}
+                        </span>
                       </div>
+                    </div>
+
+                    {/* Product Meta Info */}
+                    <div className="flex items-center space-x-2 mt-3">
+                      {product.createdAt && (
+                        <span className="text-xs text-gray-500">
+                          Added {new Date(product.createdAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-end space-x-1 mt-4">
+                      <Link href={`/products/view/${product.id}`}>
+                        <button className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                          View
+                        </button>
+                      </Link>
+                      <Link href={`/products/edit/${product.id}`}>
+                        <button className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-1">
+                          <Edit className="w-4 h-4" />
+                          <span>Edit</span>
+                        </button>
+                      </Link>
+                      <button
+                        onClick={() => handleDeleteClick(product.id)}
+                        className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center space-x-1"
+                        title="Delete product"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Delete</span>
+                      </button>
                     </div>
                   </div>
                 </div>
