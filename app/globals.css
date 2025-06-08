@@ -1,0 +1,1001 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+@layer components {
+  /* Mobile-first button styles */
+  .mobile-button {
+    @apply w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .mobile-button-secondary {
+    @apply w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors;
+  }
+
+  /* Mobile-first input styles */
+  .mobile-input {
+    @apply w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors text-base;
+  }
+
+  /* Mobile-first card styles */
+  .mobile-card {
+    @apply bg-white rounded-lg p-6 shadow-sm border border-gray-200;
+  }
+
+  /* Custom scrollbar for mobile */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #f3f4f6;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+/* Prevent zoom on input focus for iOS */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  select,
+  textarea,
+  input[type="text"],
+  input[type="password"],
+  input[type="datetime"],
+  input[type="datetime-local"],
+  input[type="date"],
+  input[type="month"],
+  input[type="time"],
+  input[type="week"],
+  input[type="number"],
+  input[type="email"],
+  input[type="url"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="color"] {
+    font-size: 16px;
+  }
+}
+
+/* Safe area for mobile devices */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Mobile-specific utilities */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+
+
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: #FF6600 !important;
+  color: white !important;
+}
+.react-datepicker__day--disabled {
+  color: #ccc !important;
+  cursor: not-allowed !important;
+}
+
+.text-dark {
+  color: #292d32 !important;
+}
+
+.text-gray {
+  color: #6b7280 !important;
+}
+
+@media (max-width: 480px) {
+  table {
+    display: block;
+  }
+  thead {
+    display: none;
+  }
+  tbody, tr {
+    display: block;
+  }
+  tr {
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+  }
+  td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    border: none;
+  }
+  td:before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #292d32;
+  }
+}
+.bg-custom-white { background-color: #FFFFFF; }
+.ring-custom-gray-1 { border-color: #E0E0E0; }
+.bg-custom-ghost-white { background-color: #F8F8FF; }
+.ring-custom-gray-2 { border-color: #D3D3D3; }
+.bg-custom-snow { background-color: #FFFAFA; }
+.ring-custom-gray-3 { border-color: #E8E8E8; }
+.bg-custom-white-smoke { background-color: #F5F5F5; }
+.ring-custom-gray-4 { border-color: #DADADA; }
+.bg-custom-alice-blue { background-color: #F0F8FF; }
+.ring-custom-gray-5 { border-color: #D1D1D1; }
+.bg-custom-seashell { background-color: #FFF5EE; }
+.ring-custom-gray-6 { border-color: #E5E5E5; }
+.bg-custom-linen { background-color: #FAF0E6; }
+.ring-custom-gray-7 { border-color: #DBDBDB; }
+
+.curved-divider {
+  background-color: #C6DDB7;
+  border-top-left-radius: 50% 100%;
+  border-top-right-radius: 50% 100%;
+}
+
+.bg-focus {
+  opacity: 1;
+  border-color: 1px solid #1A2E20 !important;
+}
+
+@keyframes blip {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.blip-effect {
+  animation: blip 0.3s ease-in-out;
+}
+
+/* Existing styles remain unchanged until the end... */
+/* Existing styles remain unchanged until the end... */
+
+/* Define bg-brand-opacity */
+.bg-brand-opacity {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.bg-opacity-50 {
+  background-color: rgba(0, 0, 0, 0.5); /* 50% opacity */
+}
+
+
+/* Ensure text color is always black */
+input[type="tel"] {
+  color: black;
+}
+
+/* Ensure placeholder color is always gray */
+input[type="tel"]::placeholder {
+  color: gray;
+}
+
+/* This is to support different browsers */
+input[type="tel"]::-webkit-input-placeholder {
+  color: gray;
+}
+
+input[type="tel"]:-moz-placeholder {
+  color: gray;
+}
+
+input[type="tel"]::-moz-placeholder {
+  color: gray;
+}
+
+input[type="tel"]:-ms-input-placeholder {
+  color: gray;
+}
+
+
+/* Mobile-specific modal styles */
+@media (max-width: 767px) {
+  .rounded-top {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+  }
+  .mobile-modal {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    max-height: 90vh;
+    height: auto;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    animation: slideUp 0.3s ease-out forwards; /* Slide in */
+    overflow-y: auto;
+    touch-action: none; /* Prevents default scrolling behavior */
+  }
+
+  /* Tiny scrollbar styling for mobile-modal */
+  .mobile-modal::-webkit-scrollbar {
+    width: 1px;
+  }
+
+  .mobile-modal::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  .mobile-modal::-webkit-scrollbar-thumb {
+    background: #9df0b6;
+    border-radius: 10px;
+  }
+
+  .mobile-modal::-webkit-scrollbar-thumb:hover {
+    background: #153d28;
+  }
+
+  /* Firefox scrollbar support */
+  .mobile-modal {
+    scrollbar-width: thin;
+    scrollbar-color: #1A2E20 #f1f1f1;
+  }
+
+  /* Adjust outer container to align at bottom on mobile */
+  .fixed.inset-0 {
+    align-items: flex-end;
+    justify-content: stretch;
+    padding: 0;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+/* Rest of your existing styles... */
+
+.custom-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.custom-scrollbar {
+  -ms-overflow-style: none; /* Hide scrollbar for IE & Edge */
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
+
+
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  border: 1px solid #bebebe !important;
+  padding-left: 6px !important;
+  border-radius: 5px !important;
+}
+
+.or-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.or-text {
+  position: relative;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4b5563; /* Equivalent to text-gray-600 */
+  background: #ffffff; /* Equivalent to bg-white */
+  padding: 0 1rem;
+  z-index: 10;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.or-text:hover {
+  transform: scale(1.1);
+  color: #ff6600; /* Matches your brand color */
+}
+
+.bg-brandmain{
+  background-color: #FF6600; /* Brand color */
+}
+.text-brandmain{
+  color: #FF6600; /* Brand color */
+}
+
+.or-line {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    #d1d5db 20%, /* Equivalent to gray-300 */
+    #9ca3af 50%, /* Equivalent to gray-400 */
+    #d1d5db 80%,
+    transparent 100%
+  );
+  transition: all 0.3s ease;
+}
+
+.or-divider:hover .or-line {
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    #ff6600 20%, /* Brand color */
+    #ff8c00 50%,
+    #ff6600 80%,
+    transparent 100%
+  );
+  height: 3px;
+}
+
+
+.animate-line {
+  animation: lineFade 1s ease-in-out;
+}
+
+
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
+/* Add these styles to your globals.css */
+.swiper-button-prev,
+.swiper-button-next {
+  &::after {
+    display: none;
+  }
+}
+
+.swiper-pagination {
+  position: relative !important;
+  bottom: 0 !important;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.5s ease-out;
+}
+
+
+
+
+
+
+/* Improved dropdown behavior */
+.group:hover .group-hover\:visible {
+  visibility: visible !important;
+}
+
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1 !important;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+}
+
+/* Keep dropdown interactive */
+.group:hover .dropdown-menu {
+  pointer-events: auto;
+}
+
+/* Smooth font weight transition */
+.hover\\:font-semibold {
+  transition: font-weight 0.2s ease-in-out;
+}
+
+transition-transform {
+  transition: transform 0.2s ease-in-out;
+}
+
+
+/* Add this CSS to your global styles or a relevant CSS file */
+.zigzag-border {
+  position: relative;
+  display: inline-block;
+}
+
+.zigzag-border::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 2px dashed transparent;
+  clip-path: polygon(0 0, 5% 15%, 10% 0, 15% 15%, 20% 0, 25% 15%, 30% 0, 35% 15%, 40% 0, 45% 15%, 50% 0, 55% 15%, 60% 0, 65% 15%, 70% 0, 75% 15%, 80% 0, 85% 15%, 90% 0, 95% 15%, 100% 0, 100% 100%, 95% 85%, 90% 100%, 85% 85%, 80% 100%, 75% 85%, 70% 100%, 65% 85%, 60% 100%, 55% 85%, 50% 100%, 45% 85%, 40% 100%, 35% 85%, 30% 100%, 25% 85%, 20% 100%, 15% 85%, 10% 100%, 5% 85%, 0 100%);
+  z-index: -1;
+}
+
+.zigzag-border:hover::before {
+  border-color: orange;
+}
+
+/* Ensure logo image doesn't have default background */
+img.filter {
+  background-color: transparent !important;
+}
+
+
+@media (max-width: 767px) {
+  .store-link {
+    display: none;
+  }
+}
+
+.truncate-text-300{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px; /* Adjust the max-width value as needed */
+}
+
+.truncate-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px; /* Adjust the max-width value as needed */
+}
+
+.overlay {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.bg-brand-white {
+  opacity: 1;
+  background-color: #ffffff;
+}
+.bg-brand-yellow {
+  opacity: 1;
+  background-color: #ffc501;
+}
+
+.bg-brand-orange {
+  opacity: 1;
+  background-color: #FF6600;
+}
+
+.hover-container:hover .overlay {
+  opacity: 0.6; /* Darkens on hover */
+}
+
+@media (max-width: 767px) {
+  .hide-on-small {
+    display: none;
+  }
+  .truncate-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px; /* Adjust the max-width value as needed */
+  }
+}
+
+/* AddressField.css */
+.custom-ant-select .ant-select-selector {
+  width: 100%;
+  height: 48px !important; /* Match address input height */
+  padding-left: 40px !important; /* Space for search icon */
+  border: none !important;
+  outline: none !important;
+  background: white !important;
+  border-radius: 9999px !important; /* Full rounded */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important; /* Match address shadow */
+  font-size: 14px !important; /* Match text size */
+}
+
+.custom-ant-select .ant-select-selection-placeholder {
+  color: #9ca3af !important; /* Match placeholder color */
+}
+
+.custom-ant-select .ant-select-arrow {
+  color: #9ca3af !important; /* Match arrow color */
+}
+
+.custom-ant-select.ant-select-focused .ant-select-selector {
+  border-color: #f15736 !important;
+  box-shadow: 0 0 0 2px rgba(241, 87, 54, 0.2) !important; /* Match focus ring */
+}
+
+/* FeaturedStore.css */
+.animate-pulse {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    background-color: #e5e7eb; /* gray-200 */
+  }
+  50% {
+    background-color: #d1d5db; /* gray-300 */
+  }
+  100% {
+    background-color: #e5e7eb; /* gray-200 */
+  }
+}
+
+
+/* globals.css */
+@keyframes flash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-flash {
+  animation: flash 1s infinite;
+}
+
+
+/* General Container Styles */
+.cart-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header Styles */
+.cart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cart-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.cart-header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.cart-count {
+  font-size: 14px;
+  color: #10b981;
+  margin-right: 8px;
+}
+
+.cart-close {
+  color: #6b7280;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* Empty Cart Styles */
+.cart-empty {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+
+.empty-content {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #292d32;
+  margin-bottom: 16px;
+}
+
+.empty-image {
+  margin-bottom: 24px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Restaurant Section */
+.restaurant-section {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.restaurant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.restaurant-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.add-pack-btn {
+  font-size: 14px;
+  font-weight: 500;
+  color: #10b981;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.text-xxs {
+  font-size: 10px !important;
+}
+/* Cart Items */
+.cart-items {
+  padding: 0 16px;
+}
+
+.cart-item {
+  padding: 16px 0;
+}
+
+/* styles/globals.css */
+.custom-search .ant-input-search-button {
+  background-color: #000000 !important; /* Black background */
+  border-color: #000000 !important;
+  color: #ffffff !important; /* White text for contrast */
+}
+
+.custom-search .ant-input-search-button:hover {
+  background-color: #333333 !important; /* Slightly lighter black on hover */
+  border-color: #333333 !important;
+}
+
+
+.custom-tabs .ant-tabs-nav {
+  margin-bottom: 0;
+}
+.custom-tabs .ant-tabs-nav-wrap {
+  overflow-x: auto;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.custom-tabs .ant-tabs-nav-wrap::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, and Opera */
+}
+.custom-tabs .ant-tabs-tab {
+  padding: 8px 16px;
+  margin-right: 8px;
+  color: #666666; /* Gray for inactive tabs */
+  font-size: 14px;
+  transition: color 0.3s;
+}
+.custom-tabs .ant-tabs-tab:hover {
+  color: #666666; /* Keep gray on hover to avoid confusion */
+}
+.custom-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #000000 !important; /* Black for active tab */
+  font-weight: 500;
+}
+
+.custom-tabs .ant-tabs-tab-active .ant-tabs-tab-btn{
+  color: #000000 !important; /* Black for active tab */
+  font-weight: 500;
+}
+.custom-tabs .ant-tabs-ink-bar {
+  background: #ff6600; /* Brand color for underline */
+  height: 2px;
+}
+
+
+
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.item-remove {
+  color: #ef4444;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.item-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item-info {
+  line-height: 1.5;
+}
+
+.item-name {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.item-price {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.item-quantity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* border: 1px solid #d1d5db; */
+  /* border-radius: 4px; */
+  padding: 2px;
+}
+
+.quantity-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 2px;
+  transition: color 0.2s;
+}
+
+.quantity-btn:hover {
+  color: #1f2937;
+}
+
+.quantity-value {
+  font-size: 14px;
+  color: #1f2937;
+  min-width: 20px;
+  text-align: center;
+}
+
+.item-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.item-action-btn {
+  font-size: 14px;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.item-action-btn:hover {
+  color: #1f2937;
+}
+
+/* Brown Bag Section */
+.brown-bag-section {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brown-bag-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brown-bag-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.brown-bag-text {
+  line-height: 1.5;
+}
+
+.brown-bag-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.brown-bag-desc {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.brown-bag-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.brown-bag-checkbox:checked {
+  border-color: #10b981;
+  background-color: #10b981;
+}
+
+/* Delivery Details */
+.delivery-details {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-label {
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.detail-action {
+  font-size: 14px;
+  font-weight: 500;
+  color: #10b981;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* PIN Notice */
+.pin-notice {
+  margin: 16px;
+  padding: 12px;
+  background-color: #ecfdf5;
+  border-radius: 8px;
+}
+
+.pin-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pin-icon {
+  font-size: 14px;
+  color: #10b981;
+}
+
+.pin-text {
+  line-height: 1.5;
+}
+
+.pin-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.pin-desc {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* styles/globals.css */
+.swiper-slide {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.swiper-slide div {
+  width: 100%; /* Ensure cards fill their slide space */
+  height: 100%; /* Maintain aspect ratio */
+}
+
+
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome, Safari, and Opera */
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none; /* Hide scrollbar for IE and Edge */
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
+
+
+
