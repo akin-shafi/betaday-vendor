@@ -14,7 +14,7 @@ export default function LoginPage() {
 
   const [formData, setFormData] = useState({
     email: "betadayfinance@gmail.com",
-    password: "vendor@123",
+    password: "Vendor@123",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -70,7 +70,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-brandmain rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-white text-2xl font-bold">B</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">BetaDay Vendor</h1>
@@ -78,7 +78,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Form */}
-        <div className="bg-custom-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Session timeout message */}
             {message && (
@@ -110,7 +110,7 @@ export default function LoginPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brandmain focus:border-brandmain transition-colors ${
+                  className={`w-full px-3 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors ${
                     errors.email ? "border-red-300 focus:ring-red-500" : ""
                   }`}
                   placeholder="Enter your email"
@@ -138,7 +138,7 @@ export default function LoginPage() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brandmain focus:border-brandmain transition-colors ${
+                  className={`w-full px-3 py-3 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors ${
                     errors.password ? "border-red-300 focus:ring-red-500" : ""
                   }`}
                   placeholder="Enter your password"
@@ -166,7 +166,7 @@ export default function LoginPage() {
             <div className="text-right">
               <Link
                 href="/auth/forgot-password"
-                className="text-sm text-brandmain hover:text-orange-700"
+                className="text-sm text-orange-600 hover:text-orange-700"
               >
                 Forgot password?
               </Link>
@@ -176,7 +176,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-brandmain text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -190,9 +190,13 @@ export default function LoginPage() {
           </form>
 
           {/* Or Divider */}
-          <div className="or-divider my-6">
-            <div className="or-line"></div>
-            <span className="or-text">OR</span>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">OR</span>
+            </div>
           </div>
 
           {/* Sign Up Link */}
@@ -201,7 +205,7 @@ export default function LoginPage() {
               Don't have an account?{" "}
               <Link
                 href="/auth/signup"
-                className="text-brandmain hover:text-orange-700 font-medium"
+                className="text-orange-600 hover:text-orange-700 font-medium"
               >
                 Sign up
               </Link>

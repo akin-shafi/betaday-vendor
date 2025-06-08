@@ -9,21 +9,15 @@ import {
   useCallback,
 } from "react";
 import { useRouter } from "next/navigation";
-
-interface Vendor {
-  id: string;
-  fullName: string;
-  email?: string;
-  phoneNumber: string;
-  role: string;
-  dateOfBirth?: string | null;
-  wallet_no?: string | null;
-  wallet_balance?: number | null;
-  bank_name?: string | null;
-  onboardingStep: number;
-  isOnboardingComplete: boolean;
-  profileImage?: string | null;
-}
+import {
+  getSession,
+  setSession,
+  clearSession,
+  updateSessionUser,
+  getSessionToken,
+  updateLastActivity,
+  type Vendor,
+} from "@/lib/session";
 
 interface VendorSignupData {
   firstName: string;
@@ -40,15 +34,12 @@ interface VendorLoginData {
 }
 
 interface ProfileData {
-  fullName: string;
+  fullName?: string;
   email?: string;
-  phoneNumber: string;
+  phoneNumber?: string;
+  dateOfBirth?: string;
+  bank_name?: string;
   profileImage?: File;
-}
-
-interface Session {
-  user: Vendor;
-  token: string;
 }
 
 interface AuthContextType {
@@ -84,35 +75,19 @@ interface AuthContextType {
   refreshVendor: () => Promise<void>;
 }
 
-// Session storage utilities
-export const getSession = (): Session | null => {
-  if (typeof window === "undefined") return null;
-  const session = localStorage.getItem("session");
-  return session ? JSON.parse(session) : null;
-};
-
-export const setSession = (session: Session) => {
-  localStorage.setItem("session", JSON.stringify(session));
-};
-
-export const clearSession = () => {
-  localStorage.removeItem("session");
-  localStorage.removeItem("lastActivity");
-};
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Create the context with a default value
+const AuthContext = createContext<AuthContextType | null>(null);
 
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_URL is not defined");
-  }
+  // Use the provided API URL
+  const baseUrl = "https://betapadi.onrender.com";
 
   const handleSessionTimeout = useCallback(() => {
     clearSession();
@@ -120,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/auth/login?message=Session expired. Please login again.");
   }, [router]);
 
+  // Session timeout management
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
 
@@ -130,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const handleActivity = () => {
       if (vendor) {
-        localStorage.setItem("lastActivity", new Date().getTime().toString());
+        updateLastActivity();
         resetTimeout();
       }
     };
@@ -144,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       "click",
     ];
 
-    if (vendor) {
+    if (vendor && isInitialized) {
       events.forEach((event) =>
         document.addEventListener(event, handleActivity, { passive: true })
       );
@@ -157,14 +133,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         document.removeEventListener(event, handleActivity)
       );
     };
-  }, [vendor, handleSessionTimeout]);
+  }, [vendor, handleSessionTimeout, isInitialized]);
 
+  // Initialize authentication on mount
   useEffect(() => {
     const initializeAuth = async () => {
       setIsLoading(true);
       try {
         const session = getSession();
+
         if (session?.user && session?.token) {
+          // Validate token with real API
           await validateToken(session.token);
         } else {
           setVendor(null);
@@ -175,6 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setVendor(null);
       } finally {
         setIsLoading(false);
+        setIsInitialized(true);
       }
     };
 
@@ -203,8 +183,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Invalid vendor data received");
       }
 
-      setVendor(vendorData);
-      setSession({ user: vendorData, token });
+      // Ensure business data is properly structured
+      const completeVendorData: Vendor = {
+        ...vendorData,
+        business: vendorData.business || null,
+      };
+
+      // Get existing session to preserve any data not returned by the API
+      const existingSession = getSession();
+
+      // If we have business data in the existing session but not in the API response,
+      // use the business data from the session
+      if (existingSession?.user?.business && !vendorData.business) {
+        completeVendorData.business = existingSession.user.business;
+      }
+
+      setVendor(completeVendorData);
+      setSession({ user: completeVendorData, token });
     } catch (error) {
       console.error("Token validation error:", error);
       clearSession();
@@ -317,12 +312,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Invalid response from server");
       }
 
-      const session: Session = { user: vendorData, token };
-      setSession(session);
-      setVendor(vendorData);
-      localStorage.setItem("lastActivity", new Date().getTime().toString());
+      // Ensure business data is properly structured
+      const completeVendorData: Vendor = {
+        ...vendorData,
+        business: vendorData.business || null,
+      };
 
-      await router.push("/dashboard");
+      setSession({ user: completeVendorData, token });
+      setVendor(completeVendorData);
+      updateLastActivity();
+
+      router.push("/dashboard");
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Login failed";
@@ -359,16 +359,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = data.token;
       const vendorData: Vendor = data.user;
 
-      const session: Session = { user: vendorData, token };
-      setSession(session);
-      setVendor(vendorData);
-      localStorage.setItem("lastActivity", new Date().getTime().toString());
+      const completeVendorData: Vendor = {
+        ...vendorData,
+        business: vendorData.business || null,
+      };
+
+      setSession({ user: completeVendorData, token });
+      setVendor(completeVendorData);
+      updateLastActivity();
 
       if (source === "signup") {
         router.push("/onboarding/business");
       }
 
-      return { success: true, data: vendorData };
+      return { success: true, data: completeVendorData };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "OTP verification failed";
@@ -485,9 +489,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const formData = new FormData();
-      formData.append("fullName", profileData.fullName);
+      if (profileData.fullName)
+        formData.append("fullName", profileData.fullName);
       if (profileData.email) formData.append("email", profileData.email);
-      formData.append("phoneNumber", profileData.phoneNumber);
+      if (profileData.phoneNumber)
+        formData.append("phoneNumber", profileData.phoneNumber);
+      if (profileData.dateOfBirth)
+        formData.append("dateOfBirth", profileData.dateOfBirth);
+      if (profileData.bank_name)
+        formData.append("bank_name", profileData.bank_name);
       if (profileData.profileImage)
         formData.append("profileImage", profileData.profileImage);
 
@@ -507,11 +517,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
       const updatedVendor: Vendor = data.user;
 
-      const updatedSession: Session = { ...session, user: updatedVendor };
-      setSession(updatedSession);
-      setVendor(updatedVendor);
+      // Preserve existing business data if not returned from API
+      const completeUpdatedVendor: Vendor = {
+        ...updatedVendor,
+        business: updatedVendor.business || session.user.business || null,
+      };
 
-      return { success: true, data: updatedVendor };
+      updateSessionUser(completeUpdatedVendor);
+      setVendor(completeUpdatedVendor);
+
+      return { success: true, data: completeUpdatedVendor };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to update profile";
@@ -527,8 +542,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     try {
       setIsLoading(true);
-      const session = getSession();
-      if (!session?.token) {
+      const token = getSessionToken();
+      if (!token) {
         throw new Error("Authentication required");
       }
 
@@ -541,7 +556,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
@@ -564,15 +579,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteAccount = async () => {
     try {
       setIsLoading(true);
-      const session = getSession();
-      if (!session?.token) {
+      const token = getSessionToken();
+      if (!token) {
         throw new Error("Authentication required");
       }
 
       const response = await fetch(`${baseUrl}/users/account`, {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${session.token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -595,16 +610,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Update the refreshVendor function to better handle business data
   const refreshVendor = async () => {
     setIsLoading(true);
     try {
-      const session = getSession();
-      if (!session?.token) throw new Error("No auth token found");
+      const token = getSessionToken();
+      if (!token) throw new Error("No auth token found");
 
-      await validateToken(session.token);
+      // Get existing session to preserve business data
+      const existingSession = getSession();
+
+      // Call API to get fresh user data
+      const response = await fetch(`${baseUrl}/auth/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Failed to refresh user data`);
+      }
+
+      const vendorData: Vendor = await response.json();
+
+      // If we have business data in the existing session but not in the API response,
+      // use the business data from the session
+      if (existingSession?.user?.business && !vendorData.business) {
+        vendorData.business = existingSession.user.business;
+      }
+
+      // Update session and state
+      setVendor(vendorData);
+      setSession({ user: vendorData, token });
     } catch (error) {
       console.error("Failed to refresh vendor data:", error);
       logout();
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -626,6 +668,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     deleteAccount,
     refreshVendor,
   };
+
+  // Don't render children until context is initialized
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Initializing...</p>
+        </div>
+      </div>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
