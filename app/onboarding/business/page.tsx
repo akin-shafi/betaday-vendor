@@ -3,7 +3,8 @@
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { setSession, useAuth, getSession } from "@/providers/auth-provider";
+import { useAuth, } from "@/providers/auth-provider";
+import { setSession, getSession } from "@/lib/session";
 import {
   ArrowLeft,
   Building,
