@@ -203,31 +203,31 @@ export default function ProfilePage() {
   }
 
   // Add a debug section to help troubleshoot
-  const renderDebugInfo = () => {
-    const sessionUser = getSessionUser();
+  // const renderDebugInfo = () => {
+  //   const sessionUser = getSessionUser();
 
-    return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
-        <p>
-          <strong>Debug Info:</strong>
-        </p>
-        <p>Session User ID: {sessionUser?.id || "Not set"}</p>
-        <p>Vendor User ID: {vendor?.id || "Not set"}</p>
-        <p>
-          Business Name from Session: {sessionUser?.business?.name || "Not set"}
-        </p>
-        <p>
-          Business Type from Session:{" "}
-          {sessionUser?.business?.businessType || "Not set"}
-        </p>
-        <p>Business Name from Vendor: {vendor?.business?.name || "Not set"}</p>
-        <p>
-          Business Type from Vendor:{" "}
-          {vendor?.business?.businessType || "Not set"}
-        </p>
-      </div>
-    );
-  };
+  //   return (
+  //     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+  //       <p>
+  //         <strong>Debug Info:</strong>
+  //       </p>
+  //       <p>Session User ID: {sessionUser?.id || "Not set"}</p>
+  //       <p>Vendor User ID: {vendor?.id || "Not set"}</p>
+  //       <p>
+  //         Business Name from Session: {sessionUser?.business?.name || "Not set"}
+  //       </p>
+  //       <p>
+  //         Business Type from Session:{" "}
+  //         {sessionUser?.business?.businessType || "Not set"}
+  //       </p>
+  //       <p>Business Name from Vendor: {vendor?.business?.name || "Not set"}</p>
+  //       <p>
+  //         Business Type from Vendor:{" "}
+  //         {vendor?.business?.businessType || "Not set"}
+  //       </p>
+  //     </div>
+  //   );
+  // };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -276,7 +276,7 @@ export default function ProfilePage() {
         )}
 
         {/* Debug Info - Remove in production */}
-        {renderDebugInfo()}
+        {/* {renderDebugInfo()} */}
 
         {/* Profile Image */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
