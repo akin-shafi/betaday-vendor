@@ -12,43 +12,25 @@ import {
   Eye,
   EyeOff,
   X,
+  RefreshCw,
 } from "lucide-react";
+import { useProducts } from "@/hooks/useProducts";
+import { useBusiness } from "@/hooks/useBusiness";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 
 export default function ProductsPage() {
+  const { business } = useBusiness();
+  const { products, isLoading, error, updateProduct, deleteProduct, refetch } =
+    useProducts();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
-  // Mock products data
-  const products = [
-    {
-      id: "1",
-      name: "Jollof Rice",
-      description: "Delicious Nigerian jollof rice with chicken",
-      price: 1500,
-      category: "Food & Beverages",
-      isAvailable: true,
-      image: null,
-    },
-    {
-      id: "2",
-      name: "Fried Rice",
-      description: "Tasty fried rice with vegetables and meat",
-      price: 1800,
-      category: "Food & Beverages",
-      isAvailable: true,
-      image: null,
-    },
-    {
-      id: "3",
-      name: "Amala & Ewedu",
-      description: "Traditional amala with ewedu soup",
-      price: 1200,
-      category: "Food & Beverages",
-      isAvailable: false,
-      image: null,
-    },
-  ];
-
+  // Filter products based on search and category
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -63,10 +45,66 @@ export default function ProductsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const toggleAvailability = (productId: string) => {
-    // TODO: Implement toggle availability
-    console.log("Toggle availability for product:", productId);
+  // Get unique categories from products
+  const categories = Array.from(
+    new Set(products.map((product) => product.category))
+  ).filter(Boolean);
+
+  const toggleAvailability = async (productId: string) => {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+
+    setIsUpdating(productId);
+    try {
+      await updateProduct(productId, {
+        isAvailable: !product.isAvailable,
+      });
+    } catch (error) {
+      console.error("Failed to update product availability:", error);
+    } finally {
+      setIsUpdating(null);
+    }
   };
+
+  const handleDeleteClick = (productId: string) => {
+    setProductToDelete(productId);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteProduct(productToDelete);
+      setDeleteModalOpen(false);
+      setProductToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setProductToDelete(null);
+  };
+
+  const productToDeleteName = productToDelete
+    ? products.find((p) => p.id === productToDelete)?.name
+    : "";
+
+  if (!business) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading business information...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -81,18 +119,45 @@ export default function ProductsPage() {
             </Link>
             <div>
               <h1 className="text-lg font-bold text-gray-900">Products</h1>
-              <p className="text-sm text-gray-500">Manage your products</p>
+              <p className="text-sm text-gray-500">
+                {products.length} product{products.length !== 1 ? "s" : ""} •{" "}
+                {business.name}
+              </p>
             </div>
           </div>
-          <Link href="/products/create">
-            <button className="bg-orange-600 text-white p-2 rounded-lg">
-              <Plus className="w-5 h-5" />
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={refetch}
+              disabled={isLoading}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`}
+              />
             </button>
-          </Link>
+            <Link href="/products/create">
+              <button className="bg-orange-600 text-white p-2 rounded-lg hover:bg-orange-700">
+                <Plus className="w-5 h-5" />
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="p-4 space-y-6">
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-600 text-sm">{error}</p>
+            <button
+              onClick={refetch}
+              className="mt-2 text-red-600 hover:text-red-700 text-sm font-medium"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
         {/* Search and Filters */}
         <div className="space-y-4">
           {/* Search Bar */}
@@ -102,7 +167,7 @@ export default function ProductsPage() {
             </div>
             <input
               type="text"
-              placeholder="Search products by name or description..."
+              placeholder="Search products by name, description, or category..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
@@ -127,7 +192,7 @@ export default function ProductsPage() {
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              All Products
+              All Products ({products.length})
             </button>
             <button
               onClick={() => setSelectedCategory("available")}
@@ -137,7 +202,7 @@ export default function ProductsPage() {
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              Available
+              Available ({products.filter((p) => p.isAvailable).length})
             </button>
             <button
               onClick={() => setSelectedCategory("unavailable")}
@@ -147,9 +212,28 @@ export default function ProductsPage() {
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
-              Unavailable
+              Unavailable ({products.filter((p) => !p.isAvailable).length})
             </button>
           </div>
+
+          {/* Category Filters */}
+          {categories.length > 0 && (
+            <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+              <span className="text-sm text-gray-500 flex-shrink-0">
+                Categories:
+              </span>
+              {categories.map((category) => (
+                <button
+                  key={category.id || category.name}
+                  onClick={() => setSearchQuery(category.name)}
+                  className="flex-shrink-0 px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                >
+                  {category.name} (
+                  {products.filter((p) => p.category === category.name).length})
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Results Count */}
           {searchQuery && (
@@ -170,17 +254,48 @@ export default function ProductsPage() {
           )}
         </div>
 
+        {/* Loading State */}
+        {isLoading && products.length === 0 && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading products...</p>
+          </div>
+        )}
+
         {/* Products List */}
         <div className="space-y-4">
-          {filteredProducts.length === 0 ? (
-            <div className="text-center py-8">
-              <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">No products found</p>
+          {!isLoading &&
+          filteredProducts.length === 0 &&
+          products.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No products yet
+              </h3>
+              <p className="text-gray-500 mb-6">
+                Start building your product catalog to attract customers.
+              </p>
               <Link href="/products/create">
-                <button className="mobile-button">
+                <button className="bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 flex items-center gap-2 mx-auto">
+                  <Plus className="w-5 h-5" />
                   Add Your First Product
                 </button>
               </Link>
+            </div>
+          ) : !isLoading && filteredProducts.length === 0 ? (
+            <div className="text-center py-8">
+              <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 mb-4">
+                No products found{searchQuery ? ` for "${searchQuery}"` : ""}
+              </p>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="text-orange-600 hover:text-orange-700 font-medium"
+                >
+                  Clear search
+                </button>
+              )}
             </div>
           ) : (
             filteredProducts.map((product) => (
@@ -190,7 +305,7 @@ export default function ProductsPage() {
               >
                 <div className="flex items-start space-x-4">
                   {/* Product Image */}
-                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {product.image ? (
                       <img
                         src={product.image || "/placeholder.svg"}
@@ -200,7 +315,7 @@ export default function ProductsPage() {
                     ) : (
                       <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
                         <span className="text-orange-600 font-semibold text-sm">
-                          {product.name.charAt(0)}
+                          {product.name.charAt(0).toUpperCase()}
                         </span>
                       </div>
                     )}
@@ -220,7 +335,7 @@ export default function ProductsPage() {
                           <p className="font-bold text-gray-900">
                             ₦{product.price.toLocaleString()}
                           </p>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                             {product.category}
                           </span>
                         </div>
@@ -239,30 +354,48 @@ export default function ProductsPage() {
                         >
                           {product.isAvailable ? "Available" : "Unavailable"}
                         </span>
+                        {product.createdAt && (
+                          <span className="text-xs text-gray-500">
+                            Added{" "}
+                            {new Date(product.createdAt).toLocaleDateString()}
+                          </span>
+                        )}
                       </div>
 
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1">
                         <Link href={`/products/view/${product.id}`}>
-                          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                             <Eye className="w-4 h-4" />
                           </button>
                         </Link>
                         <button
                           onClick={() => toggleAvailability(product.id)}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                          disabled={isUpdating === product.id}
+                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                          title={
+                            product.isAvailable
+                              ? "Hide product"
+                              : "Show product"
+                          }
                         >
-                          {product.isAvailable ? (
+                          {isUpdating === product.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                          ) : product.isAvailable ? (
                             <EyeOff className="w-4 h-4" />
                           ) : (
                             <Eye className="w-4 h-4" />
                           )}
                         </button>
                         <Link href={`/products/edit/${product.id}`}>
-                          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                             <Edit className="w-4 h-4" />
                           </button>
                         </Link>
-                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                        <button
+                          onClick={() => handleDeleteClick(product.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete product"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -273,7 +406,32 @@ export default function ProductsPage() {
             ))
           )}
         </div>
+
+        {/* Add Product CTA */}
+        {!isLoading && products.length > 0 && (
+          <div className="text-center py-6">
+            <Link href="/products/create">
+              <button className="bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 flex items-center gap-2 mx-auto">
+                <Plus className="w-5 h-5" />
+                Add Another Product
+              </button>
+            </Link>
+          </div>
+        )}
       </main>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${productToDeleteName}"? This action cannot be undone and will remove the product from your catalog.`}
+        confirmText="Delete Product"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

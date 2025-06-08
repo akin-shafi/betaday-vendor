@@ -13,8 +13,8 @@ export default function LoginPage() {
   const message = searchParams.get("message");
 
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+    email: "betadayfinance@gmail.com",
+    password: "Vendor@123",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
