@@ -42,10 +42,10 @@ export const getSession = (): Session | null => {
 
     const parsedSession = JSON.parse(session) as Session
 
-    // Check if session is expired (24 hours)
+    // Check if session is expired (7 days instead of 24 hours)
     const now = new Date().getTime()
     const sessionAge = now - (parsedSession.timestamp || 0)
-    const maxAge = 24 * 60 * 60 * 1000 // 24 hours
+    const maxAge = 7 * 24 * 60 * 60 * 1000 // 7 days instead of 24 hours
 
     if (sessionAge > maxAge) {
       clearSession()
@@ -165,6 +165,17 @@ export const updateLastActivity = () => {
   } catch (error) {
     console.error("Error updating last activity:", error)
   }
+}
+
+export const shouldRefreshSession = (): boolean => {
+  const session = getSession()
+  if (!session?.timestamp) return false
+
+  const now = new Date().getTime()
+  const sessionAge = now - session.timestamp
+  const refreshThreshold = 24 * 60 * 60 * 1000 // 24 hours
+
+  return sessionAge > refreshThreshold
 }
 
 // Export types for use in other files

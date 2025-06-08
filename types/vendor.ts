@@ -11,11 +11,38 @@ export interface Vendor {
   bank_name?: string | null
   onboardingStep: number
   isOnboardingComplete: boolean
-  business?: {
-    id: string
-    name: string
-    businessType: string
-  }
+  business?: Business | null
+}
+
+export interface Business {
+  id: string
+  slug?: string
+  name: string
+  image?: string | null
+  city?: string
+  rating?: string | number
+  openingTime?: string
+  closingTime?: string
+  ratingCount?: number
+  priceRange?: string
+  deliveryTimeRange?: string
+  businessType: string
+  productCategories?: string[]
+  // Add all the new fields from your backend
+  description?: string
+  contactNumber?: string
+  website?: string
+  address?: string
+  state?: string
+  localGovernment?: string
+  latitude?: number | null
+  longitude?: number | null
+  businessDays?: string
+  deliveryOptions?: string[] | string
+  accountNumber?: string
+  bankName?: string
+  accountName?: string
+  isActive?: boolean
 }
 
 export interface VendorLoginData {

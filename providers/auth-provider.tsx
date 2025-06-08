@@ -16,6 +16,7 @@ import {
   updateSessionUser,
   getSessionToken,
   updateLastActivity,
+  shouldRefreshSession,
   type Vendor,
 } from "@/lib/session";
 
@@ -78,7 +79,8 @@ interface AuthContextType {
 // Create the context with a default value
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+// Change from 30 minutes to 4 hours for better user experience
+const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours instead of 30 minutes
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [vendor, setVendor] = useState<Vendor | null>(null);
@@ -95,13 +97,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/auth/login?message=Session expired. Please login again.");
   }, [router]);
 
-  // Session timeout management
+  const logout = useCallback(() => {
+    clearSession();
+    setVendor(null);
+    router.push("/auth/login");
+  }, [router]);
+
+  // Update the refreshVendor function to better handle business data
+  const refreshVendor = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const token = getSessionToken();
+      if (!token) throw new Error("No auth token found");
+
+      // Get existing session to preserve business data
+      const existingSession = getSession();
+
+      // Call API to get fresh user data
+      const response = await fetch(`${baseUrl}/auth/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Failed to refresh user data`);
+      }
+
+      const vendorData: Vendor = await response.json();
+
+      // If we have business data in the existing session but not in the API response,
+      // use the business data from the session
+      if (existingSession?.user?.business && !vendorData.business) {
+        vendorData.business = existingSession.user.business;
+      }
+
+      // Update session and state
+      setVendor(vendorData);
+      setSession({ user: vendorData, token });
+    } catch (error) {
+      console.error("Failed to refresh vendor data:", error);
+      logout();
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [logout]);
+
+  // Session timeout management with auto-refresh
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
+    let refreshCheckId: NodeJS.Timeout | null = null;
 
     const resetTimeout = () => {
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(handleSessionTimeout, SESSION_TIMEOUT);
+    };
+
+    const checkAndRefreshSession = async () => {
+      if (vendor && shouldRefreshSession()) {
+        try {
+          await refreshVendor();
+          console.log("Session refreshed automatically");
+        } catch (error) {
+          console.error("Failed to auto-refresh session:", error);
+        }
+      }
     };
 
     const handleActivity = () => {
@@ -125,15 +187,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         document.addEventListener(event, handleActivity, { passive: true })
       );
       resetTimeout();
+
+      // Check for session refresh every hour
+      refreshCheckId = setInterval(checkAndRefreshSession, 60 * 60 * 1000); // 1 hour
     }
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
+      if (refreshCheckId) clearInterval(refreshCheckId);
       events.forEach((event) =>
         document.removeEventListener(event, handleActivity)
       );
     };
-  }, [vendor, handleSessionTimeout, isInitialized]);
+  }, [vendor, handleSessionTimeout, isInitialized, refreshVendor]);
 
   // Initialize authentication on mount
   useEffect(() => {
@@ -182,6 +248,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!vendorData?.id) {
         throw new Error("Invalid vendor data received");
       }
+
+      // console.log("Validate token response:", vendorData);
+      // console.log("Business data from validate token:", vendorData.business);
 
       // Ensure business data is properly structured
       const completeVendorData: Vendor = {
@@ -311,6 +380,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!token || !vendorData?.id) {
         throw new Error("Invalid response from server");
       }
+
+      // console.log("Login response data:", responseData);
+      // console.log("Business data from login:", vendorData.business);
 
       // Ensure business data is properly structured
       const completeVendorData: Vendor = {
@@ -474,12 +546,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = useCallback(() => {
-    clearSession();
-    setVendor(null);
-    router.push("/auth/login");
-  }, [router]);
-
   const updateProfile = async (profileData: ProfileData) => {
     try {
       setIsLoading(true);
@@ -605,48 +671,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to delete account";
       throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Update the refreshVendor function to better handle business data
-  const refreshVendor = async () => {
-    setIsLoading(true);
-    try {
-      const token = getSessionToken();
-      if (!token) throw new Error("No auth token found");
-
-      // Get existing session to preserve business data
-      const existingSession = getSession();
-
-      // Call API to get fresh user data
-      const response = await fetch(`${baseUrl}/auth/users/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to refresh user data`);
-      }
-
-      const vendorData: Vendor = await response.json();
-
-      // If we have business data in the existing session but not in the API response,
-      // use the business data from the session
-      if (existingSession?.user?.business && !vendorData.business) {
-        vendorData.business = existingSession.user.business;
-      }
-
-      // Update session and state
-      setVendor(vendorData);
-      setSession({ user: vendorData, token });
-    } catch (error) {
-      console.error("Failed to refresh vendor data:", error);
-      logout();
-      throw error;
     } finally {
       setIsLoading(false);
     }

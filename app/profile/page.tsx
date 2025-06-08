@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react"
+import Link from "next/link"
 import {
   ArrowLeft,
   User,
@@ -10,120 +10,117 @@ import {
   Building,
   Camera,
   Save,
-} from "lucide-react";
-import { useAuth } from "@/providers/auth-provider";
-import { getSessionUser } from "@/lib/session";
+  MapPin,
+  Clock,
+  CreditCard,
+  RefreshCw,
+} from "lucide-react"
+import { useAuth } from "@/providers/auth-provider"
+import { getSessionUser } from "@/lib/session"
+import { useBusiness } from "@/hooks/useBusiness"
 
 // Define interface for formData to ensure type safety
 interface FormData {
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  dateOfBirth: string;
-  bank_name: string;
-  businessName: string;
-  businessType: string;
-  isOnboardingComplete: boolean;
-  onboardingStep: number;
+  fullName: string
+  email: string
+  phoneNumber: string
+  dateOfBirth: string
+  bank_name: string
+}
+
+// Add this helper function before the ProfilePage component
+function ensureArray(value: string | string[] | undefined): string[] {
+  if (!value) return []
+  if (Array.isArray(value)) return value
+  try {
+    // Try to parse it as JSON if it's a string representation of an array
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : [value]
+  } catch (e) {
+    // If it can't be parsed as JSON, treat it as a single string
+    return [value]
+  }
 }
 
 export default function ProfilePage() {
-  // Add refreshUserData function
-  const { vendor, updateProfile, isLoading, refreshVendor } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { vendor, updateProfile, isLoading: authLoading, refreshVendor } = useAuth()
+  const { business, isLoading: businessLoading, error: businessError, refetch: refetchBusiness } = useBusiness()
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     email: "",
     phoneNumber: "",
     dateOfBirth: "",
     bank_name: "",
-    businessName: "",
-    businessType: "",
-    isOnboardingComplete: false,
-    onboardingStep: 1,
-  });
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  })
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // Add refreshUserData function
-  const refreshUserData = async () => {
-    setIsRefreshing(true);
+  // Refresh both user and business data
+  const refreshAllData = async () => {
+    setIsRefreshing(true)
     try {
-      await refreshVendor();
-      // The vendor state will be updated by refreshVendor
+      await Promise.all([refreshVendor(), refetchBusiness()])
     } catch (error) {
-      console.error("Failed to refresh user data:", error);
-      setErrors({ general: "Failed to refresh user data. Please try again." });
+      console.error("Failed to refresh data:", error)
+      setErrors({ general: "Failed to refresh data. Please try again." })
     } finally {
-      setIsRefreshing(false);
+      setIsRefreshing(false)
     }
-  };
+  }
 
-  // Update the useEffect to better handle business data
+  // Update form data when vendor changes
   useEffect(() => {
-    // Use session utility instead of calling getSession from auth provider
-    const sessionUser = getSessionUser();
-    const user = sessionUser || vendor;
+    const sessionUser = getSessionUser()
+    const user = sessionUser || vendor
 
     if (user) {
       setFormData({
         fullName: user.fullName || "",
         email: user.email || "",
         phoneNumber: user.phoneNumber || "",
-        dateOfBirth: user.dateOfBirth
-          ? new Date(user.dateOfBirth).toISOString().split("T")[0]
-          : "",
+        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split("T")[0] : "",
         bank_name: user.bank_name || "",
-        businessName: user.business?.name || "",
-        businessType: user.business?.businessType || "",
-        isOnboardingComplete: user.isOnboardingComplete || false,
-        onboardingStep: user.onboardingStep || 1,
-      });
+      })
     }
-  }, [vendor]); // Only depend on vendor, not session
+  }, [vendor])
 
   // Validate form
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: Record<string, string> = {}
 
     if (!formData.fullName.trim()) {
-      newErrors.fullName = "Full name is required";
+      newErrors.fullName = "Full name is required"
     }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format";
+      newErrors.email = "Invalid email format"
     }
-    if (
-      formData.phoneNumber &&
-      !/^\+?[1-9]\d{1,14}$/.test(formData.phoneNumber.replace(/\s/g, ""))
-    ) {
-      newErrors.phoneNumber = "Invalid phone number";
+    if (formData.phoneNumber && !/^\+?[1-9]\d{1,14}$/.test(formData.phoneNumber.replace(/\s/g, ""))) {
+      newErrors.phoneNumber = "Invalid phone number"
     }
-    if (
-      formData.dateOfBirth &&
-      isNaN(new Date(formData.dateOfBirth).getTime())
-    ) {
-      newErrors.dateOfBirth = "Invalid date of birth";
+    if (formData.dateOfBirth && isNaN(new Date(formData.dateOfBirth).getTime())) {
+      newErrors.dateOfBirth = "Invalid date of birth"
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
+      setErrors((prev) => ({ ...prev, [field]: "" }))
     }
-  };
+  }
 
   const handleSave = async () => {
     if (!validateForm()) {
-      return;
+      return
     }
 
-    setIsSaving(true);
-    setErrors({});
+    setIsSaving(true)
+    setErrors({})
 
     try {
       // Prepare payload (exclude read-only fields)
@@ -133,46 +130,39 @@ export default function ProfilePage() {
         phoneNumber: formData.phoneNumber,
         dateOfBirth: formData.dateOfBirth || undefined,
         bank_name: formData.bank_name || undefined,
-      };
+      }
 
-      await updateProfile(payload);
-      setIsEditing(false);
+      await updateProfile(payload)
+      setIsEditing(false)
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to update profile";
-      setErrors({ general: errorMessage });
-      console.error("Failed to update profile:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to update profile"
+      setErrors({ general: errorMessage })
+      console.error("Failed to update profile:", error)
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   const handleCancel = () => {
-    setIsEditing(false);
-    setErrors({});
+    setIsEditing(false)
+    setErrors({})
 
-    // Reset form data from current session/vendor data using session utility
-    const sessionUser = getSessionUser();
-    const user = sessionUser || vendor;
+    // Reset form data from current session/vendor data
+    const sessionUser = getSessionUser()
+    const user = sessionUser || vendor
 
     if (user) {
       setFormData({
         fullName: user.fullName || "",
         email: user.email || "",
         phoneNumber: user.phoneNumber || "",
-        dateOfBirth: user.dateOfBirth
-          ? new Date(user.dateOfBirth).toISOString().split("T")[0]
-          : "",
+        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split("T")[0] : "",
         bank_name: user.bank_name || "",
-        businessName: user.business?.name || "",
-        businessType: user.business?.businessType || "",
-        isOnboardingComplete: user.isOnboardingComplete || false,
-        onboardingStep: user.onboardingStep || 1,
-      });
+      })
     }
-  };
+  }
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -180,11 +170,11 @@ export default function ProfilePage() {
           <p className="mt-4 text-gray-600">Loading profile...</p>
         </div>
       </div>
-    );
+    )
   }
 
   // Use session utility to get current user
-  const currentUser = vendor || getSessionUser();
+  const currentUser = vendor || getSessionUser()
 
   if (!currentUser) {
     return (
@@ -199,35 +189,8 @@ export default function ProfilePage() {
           </Link>
         </div>
       </div>
-    );
+    )
   }
-
-  // Add a debug section to help troubleshoot
-  // const renderDebugInfo = () => {
-  //   const sessionUser = getSessionUser();
-
-  //   return (
-  //     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
-  //       <p>
-  //         <strong>Debug Info:</strong>
-  //       </p>
-  //       <p>Session User ID: {sessionUser?.id || "Not set"}</p>
-  //       <p>Vendor User ID: {vendor?.id || "Not set"}</p>
-  //       <p>
-  //         Business Name from Session: {sessionUser?.business?.name || "Not set"}
-  //       </p>
-  //       <p>
-  //         Business Type from Session:{" "}
-  //         {sessionUser?.business?.businessType || "Not set"}
-  //       </p>
-  //       <p>Business Name from Vendor: {vendor?.business?.name || "Not set"}</p>
-  //       <p>
-  //         Business Type from Vendor:{" "}
-  //         {vendor?.business?.businessType || "Not set"}
-  //       </p>
-  //     </div>
-  //   );
-  // };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -247,15 +210,12 @@ export default function ProfilePage() {
           </div>
           <div className="flex items-center space-x-3">
             <button
-              onClick={refreshUserData}
+              onClick={refreshAllData}
               disabled={isRefreshing}
-              className="text-gray-600 font-medium p-2 hover:bg-gray-100 rounded-lg"
+              className="text-gray-600 font-medium p-2 hover:bg-gray-100 rounded-lg flex items-center gap-2"
             >
-              {isRefreshing ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-600"></div>
-              ) : (
-                "Refresh"
-              )}
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              {isRefreshing ? "Refreshing..." : "Refresh"}
             </button>
             <button
               onClick={isEditing ? handleCancel : () => setIsEditing(true)}
@@ -275,8 +235,12 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Debug Info - Remove in production */}
-        {/* {renderDebugInfo()} */}
+        {/* Business Error */}
+        {businessError && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="text-yellow-700 text-sm">Business data: {businessError}</p>
+          </div>
+        )}
 
         {/* Profile Image */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
@@ -304,49 +268,34 @@ export default function ProfilePage() {
                 </button>
               )}
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mt-4">
-              {formData.fullName || "Vendor Name"}
-            </h2>
-            <p className="text-gray-600">
-              {formData.businessName || "Business Name"}
-            </p>
+            <h2 className="text-xl font-bold text-gray-900 mt-4">{formData.fullName || "Vendor Name"}</h2>
+            <p className="text-gray-600">{business?.name || "Business Name"}</p>
+            {businessLoading && <p className="text-sm text-gray-500">Loading business info...</p>}
           </div>
         </div>
 
         {/* Personal Information */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Personal Information
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
               {isEditing ? (
                 <input
                   type="text"
                   value={formData.fullName}
-                  onChange={(e) =>
-                    handleInputChange("fullName", e.target.value)
-                  }
+                  onChange={(e) => handleInputChange("fullName", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600"
                   placeholder="Enter full name"
                 />
               ) : (
-                <p className="text-gray-900">
-                  {formData.fullName || "Not provided"}
-                </p>
+                <p className="text-gray-900">{formData.fullName || "Not provided"}</p>
               )}
-              {errors.fullName && (
-                <p className="text-red-600 text-sm mt-1">{errors.fullName}</p>
-              )}
+              {errors.fullName && <p className="text-red-600 text-sm mt-1">{errors.fullName}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-gray-400" />
                 {isEditing ? (
@@ -358,70 +307,61 @@ export default function ProfilePage() {
                     placeholder="Enter email"
                   />
                 ) : (
-                  <p className="text-gray-900">
-                    {formData.email || "Not provided"}
-                  </p>
+                  <p className="text-gray-900">{formData.email || "Not provided"}</p>
                 )}
               </div>
-              {errors.email && (
-                <p className="text-red-600 text-sm mt-1">{errors.email}</p>
-              )}
+              {errors.email && <p className="text-red-600 text-sm mt-1">{errors.email}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-gray-400" />
                 {isEditing ? (
                   <input
                     type="tel"
                     value={formData.phoneNumber}
-                    onChange={(e) =>
-                      handleInputChange("phoneNumber", e.target.value)
-                    }
+                    onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600"
                     placeholder="Enter phone number"
                   />
                 ) : (
-                  <p className="text-gray-900">
-                    {formData.phoneNumber || "Not provided"}
-                  </p>
+                  <p className="text-gray-900">{formData.phoneNumber || "Not provided"}</p>
                 )}
               </div>
-              {errors.phoneNumber && (
-                <p className="text-red-600 text-sm mt-1">
-                  {errors.phoneNumber}
-                </p>
-              )}
+              {errors.phoneNumber && <p className="text-red-600 text-sm mt-1">{errors.phoneNumber}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date of Birth
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
               {isEditing ? (
                 <input
                   type="date"
                   value={formData.dateOfBirth}
-                  onChange={(e) =>
-                    handleInputChange("dateOfBirth", e.target.value)
-                  }
+                  onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600"
                   placeholder="Select date"
                 />
               ) : (
                 <p className="text-gray-900">
-                  {formData.dateOfBirth
-                    ? new Date(formData.dateOfBirth).toLocaleDateString()
-                    : "Not provided"}
+                  {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : "Not provided"}
                 </p>
               )}
-              {errors.dateOfBirth && (
-                <p className="text-red-600 text-sm mt-1">
-                  {errors.dateOfBirth}
-                </p>
+              {errors.dateOfBirth && <p className="text-red-600 text-sm mt-1">{errors.dateOfBirth}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={formData.bank_name}
+                  onChange={(e) => handleInputChange("bank_name", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600"
+                  placeholder="Enter bank name"
+                />
+              ) : (
+                <p className="text-gray-900">{formData.bank_name || "Not provided"}</p>
               )}
             </div>
           </div>
@@ -429,94 +369,264 @@ export default function ProfilePage() {
 
         {/* Business Information */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Business Information
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Business Name
-              </label>
-              <div className="flex items-center space-x-3">
-                <Building className="w-5 h-5 text-gray-400" />
-                <p className="text-gray-900">
-                  {formData.businessName || "Not provided"}
-                </p>
-              </div>
-              {isEditing && (
-                <p className="text-sm text-gray-500 mt-1">
-                  To update business name, go to{" "}
-                  <Link
-                    href="/business-settings"
-                    className="text-orange-600 hover:underline"
-                  >
-                    Business Settings
-                  </Link>
-                </p>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Business Information</h3>
+            <div className="flex items-center gap-3">
+              {businessLoading && (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-600"></div>
               )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Business Type
-              </label>
-              <p className="text-gray-900">
-                {formData.businessType || "Not provided"}
-              </p>
-              {isEditing && (
-                <p className="text-sm text-gray-500 mt-1">
-                  To update business type, go to{" "}
-                  <Link
-                    href="/business-settings"
-                    className="text-orange-600 hover:underline"
-                  >
-                    Business Settings
-                  </Link>
-                </p>
+              {business && (
+                <Link
+                  href="/onboarding/business/settings"
+                  className="text-orange-600 hover:text-orange-700 text-sm font-medium"
+                >
+                  Edit Business
+                </Link>
               )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Bank Name
-              </label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={formData.bank_name}
-                  onChange={(e) =>
-                    handleInputChange("bank_name", e.target.value)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600"
-                  placeholder="Enter bank name"
-                />
-              ) : (
-                <p className="text-gray-900">
-                  {formData.bank_name || "Not provided"}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Onboarding Status
-              </label>
-              <div className="flex items-center space-x-2">
-                <div
-                  className={`w-3 h-3 rounded-full ${
-                    formData.isOnboardingComplete
-                      ? "bg-green-500"
-                      : "bg-orange-500"
-                  }`}
-                ></div>
-                <p className="text-gray-900">
-                  {formData.isOnboardingComplete
-                    ? "Complete"
-                    : `Step ${formData.onboardingStep || 1} of 4`}
-                </p>
-              </div>
             </div>
           </div>
+
+          {business ? (
+            <div className="space-y-6">
+              {/* Business Header */}
+              <div className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                <div className="w-16 h-16 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  {business.image ? (
+                    <img
+                      src={business.image || "/placeholder.svg"}
+                      alt={business.name}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : (
+                    <Building className="w-8 h-8 text-orange-600" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-xl font-bold text-gray-900 truncate">{business.name}</h4>
+                  <p className="text-sm text-gray-600 mb-2">{business.businessType}</p>
+                  <div className="flex items-center space-x-4 text-sm">
+                    <div className="flex items-center space-x-1">
+                      <div
+                        className={`w-2 h-2 rounded-full ${business.isActive ? "bg-green-500" : "bg-red-500"}`}
+                      ></div>
+                      <span className="text-gray-600">{business.isActive ? "Active" : "Inactive"}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-yellow-500">★</span>
+                      <span className="text-gray-600">
+                        {business.rating} ({business.ratingCount} reviews)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Description */}
+              {business.description && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">About</label>
+                  <p className="text-gray-900 text-sm leading-relaxed">{business.description}</p>
+                </div>
+              )}
+
+              {/* Contact & Location Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Contact Information */}
+                <div className="space-y-4">
+                  <h5 className="font-medium text-gray-900 border-b pb-2">Contact Information</h5>
+
+                  <div className="flex items-center space-x-3">
+                    <Phone className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Business Phone</p>
+                      <p className="text-gray-900">{business.contactNumber || "Not provided"}</p>
+                    </div>
+                  </div>
+
+                  {business.website && (
+                    <div className="flex items-center space-x-3">
+                      <div className="w-5 h-5 text-gray-400 flex-shrink-0 flex items-center justify-center">🌐</div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Website</p>
+                        <a
+                          href={business.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-orange-600 hover:text-orange-700 hover:underline"
+                        >
+                          {business.website}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Location Information */}
+                <div className="space-y-4">
+                  <h5 className="font-medium text-gray-900 border-b pb-2">Location</h5>
+
+                  <div className="flex items-start space-x-3">
+                    <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Address</p>
+                      <p className="text-gray-900">{business.address || "Not provided"}</p>
+                      <p className="text-sm text-gray-600">
+                        {business.city}, {business.state}
+                        {business.localGovernment && ` • ${business.localGovernment}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {business.latitude && business.longitude && (
+                    <div className="text-xs text-gray-500">
+                      Coordinates: {Number(business.latitude).toFixed(4)}, {Number(business.longitude).toFixed(4)}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Business Operations Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Operating Hours */}
+                <div className="space-y-4">
+                  <h5 className="font-medium text-gray-900 border-b pb-2">Operating Hours</h5>
+
+                  <div className="flex items-center space-x-3">
+                    <Clock className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Business Hours</p>
+                      <p className="text-gray-900">
+                        {business.openingTime && business.closingTime
+                          ? `${business.openingTime.substring(0, 5)} - ${business.closingTime.substring(0, 5)}`
+                          : "Not specified"}
+                      </p>
+                      <p className="text-sm text-gray-600">{business.businessDays || "Not specified"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Service Information */}
+                <div className="space-y-4">
+                  <h5 className="font-medium text-gray-900 border-b pb-2">Service Details</h5>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Delivery Options</p>
+                    <div className="flex flex-wrap gap-2">
+                      {business.deliveryOptions ? (
+                        ensureArray(business.deliveryOptions).map((option, index) => (
+                          <span key={index} className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                            {option}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-500 text-sm">Not specified</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Price Range</p>
+                    <p className="text-gray-900">{business.priceRange || "Not specified"}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Delivery Time</p>
+                    <p className="text-gray-900">{business.deliveryTimeRange || "Not specified"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Categories */}
+              {business.productCategories && business.productCategories.length > 0 && (
+                <div>
+                  <h5 className="font-medium text-gray-900 border-b pb-2 mb-3">Product Categories</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {business.productCategories.map((category, index) => (
+                      <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                        {category}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Information */}
+              <div>
+                <h5 className="font-medium text-gray-900 border-b pb-2 mb-4">Payment Information</h5>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <CreditCard className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Bank Name</p>
+                          <p className="text-gray-900">{business.bankName || "Not provided"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Account Name</p>
+                          <p className="text-gray-900">{business.accountName || "Not provided"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Account Number</p>
+                          <p className="text-gray-900 font-mono">
+                            {business.accountNumber ? `****${business.accountNumber.slice(-4)}` : "Not provided"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Metrics */}
+              <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4">
+                <h5 className="font-medium text-gray-900 mb-3">Business Metrics</h5>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-orange-600">{business.rating}</p>
+                    <p className="text-sm text-gray-600">Rating</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-orange-600">{business.ratingCount}</p>
+                    <p className="text-sm text-gray-600">Reviews</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-orange-600">{business.productCategories?.length || 0}</p>
+                    <p className="text-sm text-gray-600">Categories</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-orange-600">{ensureArray(business.deliveryOptions).length}</p>
+                    <p className="text-sm text-gray-600">Delivery Options</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Business ID & Slug (for reference) */}
+              <div className="text-xs text-gray-500 border-t pt-4">
+                <p>
+                  <strong>Business ID:</strong> {business.id}
+                </p>
+                <p>
+                  <strong>Slug:</strong> {business.slug}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Building className="w-8 h-8 text-gray-400" />
+              </div>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">No Business Found</h4>
+              <p className="text-gray-600 mb-6">You haven't set up your business profile yet.</p>
+              <Link
+                href="/onboarding/business"
+                className="inline-flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                <Building className="w-5 h-5" />
+                Set up your business
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Save Button */}
@@ -538,5 +648,5 @@ export default function ProfilePage() {
         )}
       </main>
     </div>
-  );
+  )
 }
