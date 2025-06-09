@@ -4,16 +4,10 @@ import type React from "react";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  ArrowRight,
-  AlertCircle,
-  Phone,
-} from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
 import { useAuth } from "@/providers/auth-provider";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 
 export default function LoginPage() {
   const { login, isLoading } = useAuth();
@@ -41,19 +35,15 @@ export default function LoginPage() {
     }
   };
 
-  const formatPhoneNumber = (value: string) => {
-    // Remove all non-digits
-    const digits = value.replace(/\D/g, "");
-
-    // Handle different input formats
-    if (digits.startsWith("234")) {
-      return `+${digits}`;
-    } else if (digits.startsWith("0")) {
-      return `+234${digits.slice(1)}`;
-    } else if (digits.length <= 10) {
-      return `+234${digits}`;
+  const handlePhoneChange = (value: string | undefined) => {
+    setFormData((prev) => ({
+      ...prev,
+      identifier: value || "",
+    }));
+    // Clear error when user starts typing
+    if (errors.identifier) {
+      setErrors((prev) => ({ ...prev, identifier: "" }));
     }
-    return value;
   };
 
   const validateForm = () => {
@@ -64,9 +54,10 @@ export default function LoginPage() {
         ? "Phone number is required"
         : "Email is required";
     } else if (isPhone) {
-      const phoneRegex = /^\+234\d{10}$|^0\d{10}$/;
-      if (!phoneRegex.test(formData.identifier)) {
-        newErrors.identifier = "Please enter a valid Nigerian phone number";
+      // Phone validation is handled by the PhoneInput component
+      if (!formData.identifier.startsWith("+")) {
+        newErrors.identifier =
+          "Please enter a valid phone number with country code";
       }
     } else {
       if (!/\S+@\S+\.\S+/.test(formData.identifier)) {
@@ -88,15 +79,8 @@ export default function LoginPage() {
     if (!validateForm()) return;
 
     try {
-      let identifier = formData.identifier;
-
-      // Format phone number if needed
-      if (isPhone) {
-        identifier = formatPhoneNumber(identifier);
-      }
-
       await login({
-        identifier,
+        identifier: formData.identifier,
         password: isPhone ? undefined : formData.password,
         rememberMe: formData.rememberMe,
       });
@@ -175,32 +159,42 @@ export default function LoginPage() {
               </label>
               <div className="relative">
                 {isPhone ? (
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <div
+                    className={`phone-input-container ${
+                      errors.identifier ? "phone-input-error" : ""
+                    }`}
+                  >
+                    <PhoneInput
+                      international
+                      defaultCountry="NG"
+                      value={formData.identifier}
+                      onChange={handlePhoneChange}
+                      placeholder="Enter phone number"
+                      disabled={isLoading}
+                    />
+                  </div>
                 ) : (
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <>
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      id="identifier"
+                      name="identifier"
+                      value={formData.identifier}
+                      onChange={handleInputChange}
+                      className={`w-full px-3 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors ${
+                        errors.identifier
+                          ? "border-red-300 focus:ring-red-500"
+                          : ""
+                      }`}
+                      placeholder="Enter your email"
+                      disabled={isLoading}
+                    />
+                  </>
                 )}
-                <input
-                  type={isPhone ? "tel" : "email"}
-                  id="identifier"
-                  name="identifier"
-                  value={formData.identifier}
-                  onChange={handleInputChange}
-                  className={`w-full px-3 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors ${
-                    errors.identifier ? "border-red-300 focus:ring-red-500" : ""
-                  }`}
-                  placeholder={
-                    isPhone ? "Enter your phone number" : "Enter your email"
-                  }
-                  disabled={isLoading}
-                />
               </div>
               {errors.identifier && (
                 <p className="text-red-600 text-sm mt-1">{errors.identifier}</p>
-              )}
-              {isPhone && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Format: +234XXXXXXXXXX or 0XXXXXXXXXX
-                </p>
               )}
             </div>
 

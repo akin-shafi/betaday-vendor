@@ -998,4 +998,54 @@ img.filter {
 }
 
 
+/* Phone input styling to match your design */
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: white;
+  transition: all 0.2s;
+}
 
+.phone-input-error .PhoneInput {
+  border-color: #f87171;
+}
+
+.PhoneInput:focus-within {
+  outline: none;
+  border-color: #ea580c;
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.2);
+}
+
+.phone-input-error .PhoneInput:focus-within {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.PhoneInputCountry {
+  margin-right: 0.5rem;
+}
+
+.PhoneInputInput {
+  flex: 1;
+  border: none;
+  padding: 0.5rem 0;
+  font-size: 1rem;
+  background-color: transparent;
+  color: #1f2937;
+}
+
+.PhoneInputInput:focus {
+  outline: none;
+}
+
+.PhoneInputInput::placeholder {
+  color: #9ca3af;
+}
+
+.PhoneInputInput:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

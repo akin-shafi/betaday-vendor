@@ -1,251 +1,266 @@
 "use client";
 
+import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { useForm, Controller } from "react-hook-form";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Phone } from "lucide-react";
-import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
-
-interface OTPFormValues {
-  otp: string;
-}
+import { ArrowLeft, ArrowRight, RefreshCw, CheckCircle } from "lucide-react";
+import { useAuth } from "@/providers/auth-provider";
 
 export default function VerifyOTPPage() {
   const { verifyOTP, resendOTP, isLoading } = useAuth();
-  const [otp, setOtp] = useState(["", "", "", ""]);
-  const [error, setError] = useState<string | null>(null);
-  const [resendSuccess, setResendSuccess] = useState<string | null>(null);
-  const [resendCountdown, setResendCountdown] = useState(60);
-  const [isResending, setIsResending] = useState(false);
-  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Sanitize and normalize phone number
-  const rawPhoneNumber = searchParams.get("phone") || "";
-  const sanitizedPhoneNumber = rawPhoneNumber.trim().replace(/\s+/g, "");
-  const phoneNumber = sanitizedPhoneNumber.startsWith("+")
-    ? sanitizedPhoneNumber
-    : `+${sanitizedPhoneNumber}`;
+  const phone = searchParams.get("phone") || "";
+  const source = (searchParams.get("source") as "login" | "signup") || "signup";
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<OTPFormValues>({
-    defaultValues: {
-      otp: "",
-    },
-  });
+  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [success, setSuccess] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [isResending, setIsResending] = useState(false);
 
-  // Countdown timer for resend OTP
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   useEffect(() => {
-    if (resendCountdown > 0) {
-      const timer = setTimeout(() => {
-        setResendCountdown(resendCountdown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
+    if (!phone) {
+      router.push("/auth/login");
     }
-  }, [resendCountdown]);
+  }, [phone, router]);
 
-  // Handle OTP input changes
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
   const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      value = value.slice(0, 1);
-    }
-    if (!/^\d*$/.test(value)) {
-      return;
-    }
+    if (!/^\d*$/.test(value)) return; // Only allow digits
+
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = value.slice(-1); // Only take the last digit
     setOtp(newOtp);
+
+    // Clear errors when user starts typing
+    if (errors.otp) {
+      setErrors({});
+    }
+
+    // Auto-focus next input
     if (value && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
-  // Handle backspace key
-  const handleKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) => {
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  // Handle OTP paste
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+  const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text/plain").trim();
-    if (!/^\d+$/.test(pastedData)) {
-      return;
-    }
-    const digits = pastedData.slice(0, 4).split("");
+    const pastedData = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 4);
     const newOtp = [...otp];
-    digits.forEach((digit, index) => {
-      if (index < 4) {
-        newOtp[index] = digit;
-      }
-    });
+
+    for (let i = 0; i < pastedData.length && i < 4; i++) {
+      newOtp[i] = pastedData[i];
+    }
+
     setOtp(newOtp);
-    const lastFilledIndex = Math.min(digits.length - 1, 3);
-    inputRefs.current[lastFilledIndex]?.focus();
+
+    // Focus the next empty input or the last input
+    const nextIndex = Math.min(pastedData.length, 3);
+    inputRefs.current[nextIndex]?.focus();
   };
 
-  const onSubmit = async () => {
-    if (!phoneNumber || phoneNumber === "+") {
-      setError("Phone number is missing. Please try signing up again.");
-      return;
+  const validateForm = () => {
+    const otpString = otp.join("");
+    if (otpString.length !== 4) {
+      setErrors({ otp: "Please enter the complete 4-digit code" });
+      return false;
     }
+    return true;
+  };
 
-    const otpValue = otp.join("");
-    if (otpValue.length !== 4) {
-      setError("Please enter the complete 4-digit OTP");
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
 
     try {
-      setError(null);
-      setResendSuccess(null);
-      await verifyOTP(phoneNumber, otpValue, "signup");
-      // Redirect to /onboarding/business handled by verifyOTP in AuthProvider
+      const otpString = otp.join("");
+      await verifyOTP(phone, otpString, source);
+      setSuccess(true);
+
+      // Success message and redirect are handled in the auth provider
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to verify OTP. Please try again."
-      );
+      setErrors({
+        general:
+          error instanceof Error
+            ? error.message
+            : "Invalid OTP. Please try again.",
+      });
     }
   };
 
   const handleResendOTP = async () => {
-    if (!phoneNumber || phoneNumber === "+") {
-      setError("Phone number is missing. Please try signing up again.");
-      return;
-    }
-
-    if (resendCountdown > 0 || isResending) {
-      return;
-    }
+    if (resendCooldown > 0 || isResending) return;
 
     try {
-      setError(null);
-      setResendSuccess(null);
       setIsResending(true);
-      await resendOTP(phoneNumber, "signup");
-      setResendSuccess("OTP resent successfully. Check your phone or email.");
-      setResendCountdown(60);
+      await resendOTP(phone, source);
+      setResendCooldown(60); // 60 seconds cooldown
+      setErrors({});
+      // Clear current OTP
+      setOtp(["", "", "", ""]);
+      inputRefs.current[0]?.focus();
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to resend OTP. Please try again."
-      );
+      setErrors({
+        general:
+          error instanceof Error
+            ? error.message
+            : "Failed to resend OTP. Please try again.",
+      });
     } finally {
       setIsResending(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 p-4">
-      <div className="w-full max-w-md mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex-1 text-center">
-            <div className="w-16 h-16 bg-brandmain rounded-full flex items-center justify-center mx-auto mb-2">
-              <span className="text-white text-2xl font-bold">B</span>
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">Verify OTP</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">
+              Verification Successful!
+            </h1>
+            <p className="text-gray-600 mb-4">
+              {source === "signup"
+                ? "Your account has been verified. Setting up your business profile..."
+                : "Welcome back! Redirecting to your dashboard..."}
+            </p>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mx-auto"></div>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {/* Form Container */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">
-              OTP Verification
-            </h2>
-            <p className="text-gray-600 mt-1">
-              Enter the 4-digit OTP sent to your phone number{" "}
-              {phoneNumber || "and email"}
-            </p>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-white text-2xl font-bold">B</span>
           </div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Verify Your Phone
+          </h1>
+          <p className="text-gray-600 mt-2">Enter the 4-digit code sent to</p>
+          <p className="text-orange-600 font-medium">{phone}</p>
+        </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-              <p className="text-red-600 text-sm">{error}</p>
+        {/* OTP Form */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-600 text-sm">{errors.general}</p>
+              </div>
+            )}
+
+            {/* OTP Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-4 text-center">
+                Verification Code
+              </label>
+              <div className="flex justify-center space-x-4">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    autoFocus={index === 0}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    onPaste={index === 0 ? handlePaste : undefined}
+                    className={`w-14 h-14 text-center text-xl font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors ${
+                      errors.otp ? "border-red-300 focus:ring-red-500" : ""
+                    }`}
+                    disabled={isLoading}
+                  />
+                ))}
+              </div>
+              {errors.otp && (
+                <p className="text-red-600 text-sm mt-2 text-center">
+                  {errors.otp}
+                </p>
+              )}
             </div>
-          )}
 
-          {resendSuccess && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-              <p className="text-green-600 text-sm">{resendSuccess}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* OTP Inputs */}
-            <div className="flex justify-center gap-3">
-              {otp.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => {
-                    inputRefs.current[index] = el;
-                  }}
-                  type="text"
-                  value={digit}
-                  onChange={(e) => handleOtpChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  onPaste={index === 0 ? handlePaste : undefined}
-                  className={`w-14 h-14 text-center text-2xl font-bold border rounded-lg ${
-                    errors.otp || error ? "border-red-300" : "border-gray-300"
-                  } focus:outline-none focus:ring-2 focus:ring-brandmain focus:border-brandmain`}
-                  maxLength={1}
-                  autoFocus={index === 0}
-                  disabled={isLoading}
-                />
-              ))}
+            {/* Resend OTP */}
+            <div className="text-center">
+              <p className="text-sm text-gray-600 mb-2">
+                Didn't receive the code?
+              </p>
+              <button
+                type="button"
+                onClick={handleResendOTP}
+                disabled={resendCooldown > 0 || isResending}
+                className="inline-flex items-center text-orange-600 hover:text-orange-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isResending ? (
+                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                )}
+                {resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : "Resend Code"}
+              </button>
             </div>
 
-            {/* Submit */}
+            {/* Submit Button */}
             <button
               type="submit"
-              className="w-full py-3 bg-brandmain text-white font-semibold rounded-lg hover:bg-orange-600 transition disabled:opacity-70 disabled:cursor-not-allowed"
-              disabled={isLoading}
+              disabled={isLoading || otp.join("").length !== 4}
+              className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isLoading ? "Verifying OTP..." : "Verify OTP"}
+              {isLoading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <>
+                  Verify Code
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
             </button>
           </form>
 
-          {/* Resend OTP */}
-          <div className="text-center mt-4">
-            <p className="text-gray-600 text-sm">
-              Didn’t receive the code?{" "}
-              {resendCountdown > 0 ? (
-                <span>Resend in {resendCountdown}s</span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleResendOTP}
-                  className="text-brandmain font-semibold hover:underline disabled:opacity-70 disabled:cursor-not-allowed"
-                  disabled={isResending || isLoading}
-                >
-                  {isResending ? "Resending..." : "Resend OTP"}
-                </button>
-              )}
-            </p>
-          </div>
-        </div>
-
-        <div className="text-center mt-6">
-          <p className="text-gray-600">
-            Back to{" "}
-            <Link href="/auth/signup" className="text-brandmain font-semibold">
-              Signup
+          {/* Back to Login */}
+          <div className="mt-6 text-center">
+            <Link
+              href="/auth/login"
+              className="inline-flex items-center text-orange-600 hover:text-orange-700 font-medium"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Sign In
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </div>
