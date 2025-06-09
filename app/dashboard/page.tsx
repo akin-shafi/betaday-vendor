@@ -19,12 +19,16 @@ import {
   LogOut,
   AlertCircle,
   CheckCircle,
+  Loader2,
 } from "lucide-react"
 import { useAuth } from "@/providers/auth-provider"
 import { ProtectedRoute } from "@/components/protected-route"
+import { useDashboardStats } from "@/hooks/useDashboardStats"
+import { formatCurrency, formatDate } from "@/lib/utils"
 
 function DashboardContent() {
   const { vendor, logout } = useAuth()
+  const { stats, isLoading, error } = useDashboardStats()
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
 
@@ -39,19 +43,13 @@ function DashboardContent() {
     setIsOnboardingComplete(true)
   }
 
-  // Mock data
-  const stats = {
-    totalProducts: 24,
-    totalEarnings: 15420.5,
-    averageRating: 4.8,
-    totalOrders: 156,
+  // Use API data or fallback to defaults
+  const dashboardStats = {
+    totalProducts: stats?.totalProducts || 0,
+    totalEarnings: stats?.totalRevenue || 0,
+    averageRating: 4.8, // This might come from a different endpoint
+    totalOrders: stats?.totalOrders || 0,
   }
-
-  const recentOrders = [
-    { id: "001", customer: "John Doe", amount: 45.5, status: "completed", time: "2 hours ago" },
-    { id: "002", customer: "Jane Smith", amount: 32.0, status: "pending", time: "4 hours ago" },
-    { id: "003", customer: "Mike Johnson", amount: 78.25, status: "completed", time: "6 hours ago" },
-  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -151,13 +149,39 @@ function DashboardContent() {
           </div>
         )}
 
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-medium text-red-900">Unable to load dashboard data</h3>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-2 text-red-600 text-sm font-medium hover:text-red-800"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Products</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalProducts}</p>
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    <span className="text-gray-400">Loading...</span>
+                  </div>
+                ) : (
+                  <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalProducts}</p>
+                )}
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Package className="w-5 h-5 text-blue-600" />
@@ -169,7 +193,14 @@ function DashboardContent() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Earnings</p>
-                <p className="text-2xl font-bold text-gray-900">₦{stats.totalEarnings.toLocaleString()}</p>
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    <span className="text-gray-400">Loading...</span>
+                  </div>
+                ) : (
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(dashboardStats.totalEarnings)}</p>
+                )}
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="w-5 h-5 text-green-600" />
@@ -181,7 +212,7 @@ function DashboardContent() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Rating</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.averageRating}</p>
+                <p className="text-2xl font-bold text-gray-900">{dashboardStats.averageRating}</p>
               </div>
               <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
                 <Star className="w-5 h-5 text-yellow-600" />
@@ -193,7 +224,14 @@ function DashboardContent() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Orders</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalOrders}</p>
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    <span className="text-gray-400">Loading...</span>
+                  </div>
+                ) : (
+                  <p className="text-2xl font-bold text-gray-900">{dashboardStats.totalOrders}</p>
+                )}
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-purple-600" />
@@ -249,29 +287,50 @@ function DashboardContent() {
             </Link>
           </div>
 
-          <div className="space-y-3">
-            {recentOrders.map((order) => (
-              <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{order.customer}</p>
-                  <p className="text-sm text-gray-600">
-                    Order #{order.id} • {order.time}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">₦{order.amount}</p>
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      order.status === "completed" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                    }`}
-                  >
-                    {order.status === "completed" && <CheckCircle className="w-3 h-3 mr-1" />}
-                    {order.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              <span className="ml-2 text-gray-500">Loading recent orders...</span>
+            </div>
+          ) : stats?.recentOrders && stats.recentOrders.length > 0 ? (
+            <div className="space-y-3">
+              {stats.recentOrders.map((order) => {
+                const { date, time } = formatDate(order.date)
+                return (
+                  <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{order.customerName}</p>
+                      <p className="text-sm text-gray-600">
+                        Order #{order.id} • {time}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">{formatCurrency(order.amount)}</p>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          order.status.toLowerCase() === "delivered" || order.status.toLowerCase() === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : order.status.toLowerCase() === "pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {(order.status.toLowerCase() === "delivered" || order.status.toLowerCase() === "completed") && (
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                        )}
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <ShoppingBag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No recent orders</p>
+            </div>
+          )}
         </div>
       </main>
 

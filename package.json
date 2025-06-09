@@ -11,6 +11,7 @@
     "dependencies": {
         "@react-oauth/google": "^0.12.2",
         "classnames": "^2.5.1",
+        "clsx": "^2.1.1",
         "libphonenumber-js": "^1.12.9",
         "lodash": "^4.17.21",
         "lucide-react": "^0.487.0",
@@ -18,7 +19,8 @@
         "react": "^18",
         "react-dom": "^18",
         "react-hook-form": "^7.57.0",
-        "react-phone-number-input": "^3.4.12"
+        "react-phone-number-input": "^3.4.12",
+        "tailwind-merge": "^3.3.0"
     },
     "devDependencies": {
         "@tanstack/react-query": "^5.72.2",
