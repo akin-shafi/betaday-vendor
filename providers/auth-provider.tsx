@@ -213,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       try {
         const session = getSession();
-        console.log("Initializing auth with session:", session);
+        // console.log("Initializing auth with session:", session);
 
         if (session?.user && session?.token) {
           // Validate token with real API
@@ -256,8 +256,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Invalid vendor data received");
       }
 
-      console.log("Validate token response:", vendorData);
-      console.log("Business data from validate token:", vendorData.business);
+      // console.log("Validate token response:", vendorData);
+      // console.log("Business data from validate token:", vendorData.business);
 
       // Ensure business data is properly structured
       const completeVendorData: Vendor = {

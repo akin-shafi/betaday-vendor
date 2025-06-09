@@ -189,7 +189,9 @@ export default function VerifyOTPPage() {
                 {otp.map((digit, index) => (
                   <input
                     key={index}
-                    ref={(el) => (inputRefs.current[index] = el)}
+                    ref={(el) => {
+                      inputRefs.current[index] = el;
+                    }}
                     autoFocus={index === 0}
                     type="text"
                     inputMode="numeric"
