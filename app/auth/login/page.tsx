@@ -13,15 +13,19 @@ export default function LoginPage() {
   const message = searchParams.get("message");
 
   const [formData, setFormData] = useState({
-    email: "betadayfinance@gmail.com",
-    password: "Vendor@123",
+    email: "",
+    password: "",
+    rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -54,6 +58,7 @@ export default function LoginPage() {
       await login({
         identifier: formData.email,
         password: formData.password,
+        rememberMe: formData.rememberMe,
       });
     } catch (error) {
       setErrors({
@@ -162,14 +167,40 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Forgot Password */}
-            <div className="text-right">
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="rememberMe"
+                  name="rememberMe"
+                  type="checkbox"
+                  checked={formData.rememberMe}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                  disabled={isLoading}
+                />
+                <label
+                  htmlFor="rememberMe"
+                  className="ml-2 block text-sm text-gray-700"
+                >
+                  Remember me for 7 days
+                </label>
+              </div>
               <Link
                 href="/auth/forgot-password"
                 className="text-sm text-orange-600 hover:text-orange-700"
               >
                 Forgot password?
               </Link>
+            </div>
+
+            {/* Session Duration Info */}
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-600">
+                {formData.rememberMe
+                  ? "✓ Stay signed in for 7 days"
+                  : "⏰ Session expires after 24 hours"}
+              </p>
             </div>
 
             {/* Submit Button */}
