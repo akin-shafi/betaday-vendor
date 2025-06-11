@@ -33,13 +33,7 @@ export default function EditComboPage() {
   const router = useRouter();
   const { id } = useParams(); // Get combo ID from URL
   const { business } = useBusiness();
-  const {
-    products,
-    getProduct,
-    updateProduct,
-    isLoading: productsLoading,
-    refetch,
-  } = useProducts();
+  const { products, getProduct, updateProduct, isLoading: productsLoading } = useProducts();
   const { isLoading: comboLoading, error: comboError } = useComboProducts();
 
   const [form, setForm] = useState<ComboForm>({
@@ -64,33 +58,34 @@ export default function EditComboPage() {
       return;
     }
 
-    const loadCombo = async () => {
+    const fetchCombo = async () => {
       try {
         setIsFetching(true);
-        // Ensure products are loaded
-        await refetch();
-        const combo = getProduct(id);
+        const combo = await getProduct(id);
         if (!combo) {
           throw new Error("Combo not found");
         }
         setForm({
           name: combo.name,
           description: combo.description || "",
-          items: combo.items || [],
+          items: combo.items?.map((item: ComboItem) => ({
+            ...item,
+            product: products.find((p) => p.id === item.productId) || item.product,
+          })) || [],
           customPrice: combo.price.toString(),
           useCustomPrice: true, // Assume custom price for editing
           isAvailable: combo.isAvailable ?? true,
         });
       } catch (error) {
-        console.error("Failed to load combo:", error);
+        console.error("Failed to fetch combo:", error);
         setErrors({ fetch: "Failed to load combo data" });
       } finally {
         setIsFetching(false);
       }
     };
 
-    loadCombo();
-  }, [id, getProduct, refetch]); // Depend on id, getProduct, refetch
+    fetchCombo();
+  }, [id, getProduct, products]); // Depend on id, getProduct, and products
 
   // Filter products for search
   const filteredProducts = products.filter(
@@ -235,7 +230,9 @@ export default function EditComboPage() {
               <h1 className="text-lg font-bold text-gray-900">
                 Edit Combo Meal
               </h1>
-              <p className="text-sm text-gray-500">Update your combo product</p>
+              <p className="text-sm text-gray-500">
+                Update your combo product
+              </p>
             </div>
           </div>
         </div>
@@ -320,7 +317,10 @@ export default function EditComboPage() {
                   }
                   className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                 />
-                <label htmlFor="isAvailable" className="text-sm text-gray-700">
+                <label
+                  htmlFor="isAvailable"
+                  className="text-sm text-gray-700"
+                >
                   Available for Sale
                 </label>
               </div>
@@ -593,9 +593,7 @@ export default function EditComboPage() {
               {/* Update Button */}
               <button
                 onClick={handleSubmit}
-                disabled={
-                  comboLoading || productsLoading || form.items.length < 2
-                }
+                disabled={comboLoading || productsLoading || form.items.length < 2}
                 className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {comboLoading || productsLoading ? (
