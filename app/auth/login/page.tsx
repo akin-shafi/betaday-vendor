@@ -22,8 +22,8 @@ export default function LoginPage() {
 
   const [isPhone, setIsPhone] = useState(false);
   const [formData, setFormData] = useState({
-    identifier: "",
-    password: "",
+    identifier: "betadayfinance@gmail.com",
+    password: "Vendor@123",
     rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -95,16 +95,21 @@ export default function LoginPage() {
         identifier = formatPhoneNumber(identifier);
       }
 
-      await login({
+      const result = await login({
         identifier,
         password: isPhone ? undefined : formData.password,
         rememberMe: formData.rememberMe,
       });
+      console.log("result", result);
+
+      // if(result  ){
+
+      // }
     } catch (error) {
       setErrors({
         general:
           error instanceof Error
-            ? error.message
+            ? "Invalid Credentials. Please try again"
             : "Login failed. Please try again.",
       });
     }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { getSession } from "@/lib/session"
 import { useBusiness } from "@/hooks/useBusiness"
 import type { Product, CreateProductData, UpdateProductData, ProductCategory } from "@/types/product"
@@ -25,7 +25,7 @@ export function useProducts() {
     }
   }
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     if (!business?.id) return
 
     try {
@@ -48,10 +48,9 @@ export function useProducts() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [business?.id])
 
-  // Update the fetchCategories function to use the dedicated API endpoint
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     if (!business?.id) return
 
     try {
@@ -68,7 +67,7 @@ export function useProducts() {
     } catch (error) {
       console.error("Error fetching categories:", error)
     }
-  }
+  }, [business?.id])
 
   const createProduct = async (productData: CreateProductData): Promise<Product> => {
     try {
@@ -94,7 +93,6 @@ export function useProducts() {
     }
   }
 
-  // Add a new function to create multiple products at once
   const createMultipleProducts = async (productsData: CreateProductData[]): Promise<Product[]> => {
     try {
       const response = await fetch(`${baseUrl}/products/multiple`, {
@@ -111,7 +109,6 @@ export function useProducts() {
       const data = await response.json()
       const newProducts = data.products || []
 
-      // Update local state with the new products
       setProducts((prev) => [...newProducts, ...prev])
       return newProducts
     } catch (error) {
@@ -144,7 +141,6 @@ export function useProducts() {
     }
   }
 
-  // Fixed image upload function to properly handle the response
   const updateProductImage = async (productId: string, image: File | string): Promise<any> => {
     try {
       const session = getSession()
@@ -191,12 +187,8 @@ export function useProducts() {
       const data = await response.json()
       console.log("Image update successful:", data)
 
-      // The API returns the full updated product in data.product
       if (data.product) {
-        // Update the product in local state with the complete updated product
         setProducts((prev) => prev.map((p) => (p.id === productId ? data.product : p)))
-
-        // Return the updated product for the component to use
         return data.product
       }
 
@@ -226,23 +218,54 @@ export function useProducts() {
     }
   }
 
-  const getProduct = (productId: string): Product | undefined => {
-    return products.find((p) => p.id === productId)
-  }
+  const getProduct = useCallback(
+    async (productId: string): Promise<Product | null> => {
+      // Check local state first
+      const foundProduct = products.find((p) => p.id === productId)
+      if (foundProduct) {
+        return foundProduct
+      }
+
+      // Fetch directly from API if not found locally
+      try {
+        const response = await fetch(`${baseUrl}/products/${productId}`, {
+          headers: getAuthHeaders(),
+        })
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            return null // Product not found
+          }
+          throw new Error(`Failed to fetch product: ${response.status}`)
+        }
+
+        const data = await response.json()
+        const product = data.product
+        if (product) {
+          // Avoid updating state to prevent re-renders
+          return product
+        }
+        return null
+      } catch (error) {
+        console.error("Error fetching product:", error)
+        return null
+      }
+    },
+    [products] // Depend on products for local lookup
+  )
 
   useEffect(() => {
     if (business?.id) {
       fetchProducts()
       fetchCategories()
     }
-  }, [business?.id])
+  }, [business?.id, fetchProducts, fetchCategories])
 
   const refetch = () => {
     fetchProducts()
     fetchCategories()
   }
 
-  // Add createMultipleProducts to the return object
   return {
     products,
     categories,

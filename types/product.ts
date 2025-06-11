@@ -1,4 +1,5 @@
 export interface Product {
+  items: any[]
   id: string
   name: string
   description: string

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -26,13 +26,21 @@ interface ComboForm {
   items: ComboItem[];
   customPrice: string;
   useCustomPrice: boolean;
+  isAvailable: boolean;
 }
 
-export default function CreateComboPage() {
+export default function EditComboPage() {
   const router = useRouter();
+  const { id } = useParams(); // Get combo ID from URL
   const { business } = useBusiness();
-  const { products, isLoading: productsLoading } = useProducts();
-  const { createCombo, isLoading: creating } = useComboProducts();
+  const {
+    products,
+    getProduct,
+    updateProduct,
+    isLoading: productsLoading,
+    refetch,
+  } = useProducts();
+  const { isLoading: comboLoading, error: comboError } = useComboProducts();
 
   const [form, setForm] = useState<ComboForm>({
     name: "",
@@ -40,11 +48,49 @@ export default function CreateComboPage() {
     items: [],
     customPrice: "",
     useCustomPrice: false,
+    isAvailable: true,
   });
 
   const [showProductSelector, setShowProductSelector] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isFetching, setIsFetching] = useState(true);
+
+  // Fetch combo data on mount
+  useEffect(() => {
+    if (!id || typeof id !== "string") {
+      setErrors({ fetch: "Invalid combo ID" });
+      setIsFetching(false);
+      return;
+    }
+
+    const loadCombo = async () => {
+      try {
+        setIsFetching(true);
+        // Ensure products are loaded
+        await refetch();
+        const combo = getProduct(id);
+        if (!combo) {
+          throw new Error("Combo not found");
+        }
+        setForm({
+          name: combo.name,
+          description: combo.description || "",
+          items: combo.items || [],
+          customPrice: combo.price.toString(),
+          useCustomPrice: true, // Assume custom price for editing
+          isAvailable: combo.isAvailable ?? true,
+        });
+      } catch (error) {
+        console.error("Failed to load combo:", error);
+        setErrors({ fetch: "Failed to load combo data" });
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    loadCombo();
+  }, [id, getProduct, refetch]); // Depend on id, getProduct, refetch
 
   // Filter products for search
   const filteredProducts = products.filter(
@@ -139,7 +185,7 @@ export default function CreateComboPage() {
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!validateForm() || !business?.id) return;
+    if (!validateForm() || !business?.id || !id) return;
 
     try {
       const comboData = {
@@ -150,25 +196,25 @@ export default function CreateComboPage() {
           quantity: item.quantity,
         })),
         price: finalPrice,
-        businessId: business.id,
-        categories: ["Combos"], // Added to match payload
-        isAvailable: true, // Added to match payload
-        isCombo: true, // Added to match payload
+        categories: ["Combos"],
+        isAvailable: form.isAvailable,
+        isCombo: true,
       };
 
-      await createCombo(comboData);
+      await updateProduct(id as string, comboData);
       router.push("/products");
     } catch (error) {
-      console.error("Failed to create combo:", error);
+      console.error("Failed to update combo:", error);
+      setErrors({ submit: "Failed to update combo" });
     }
   };
 
-  if (!business) {
+  if (!business || isFetching) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading business information...</p>
+          <p className="text-gray-600">Loading combo data...</p>
         </div>
       </div>
     );
@@ -187,11 +233,9 @@ export default function CreateComboPage() {
             </Link>
             <div>
               <h1 className="text-lg font-bold text-gray-900">
-                Create Combo Meal
+                Edit Combo Meal
               </h1>
-              <p className="text-sm text-gray-500">
-                Build your custom combo product
-              </p>
+              <p className="text-sm text-gray-500">Update your combo product</p>
             </div>
           </div>
         </div>
@@ -263,14 +307,27 @@ export default function CreateComboPage() {
                 )}
               </div>
 
-              {/* Display Combo Status */}
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="isAvailable"
+                  checked={form.isAvailable}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      isAvailable: e.target.checked,
+                    }))
+                  }
+                  className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                />
+                <label htmlFor="isAvailable" className="text-sm text-gray-700">
+                  Available for Sale
+                </label>
+              </div>
+
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Check className="w-4 h-4 text-green-600" />
                 <span>Category: Combos</span>
-              </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Check className="w-4 h-4 text-green-600" />
-                <span>Available by default</span>
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Check className="w-4 h-4 text-green-600" />
@@ -473,7 +530,7 @@ export default function CreateComboPage() {
               {/* Combo Status */}
               <div className="text-sm text-gray-600">
                 <p>Category: Combos</p>
-                <p>Status: Available</p>
+                <p>Status: {form.isAvailable ? "Available" : "Unavailable"}</p>
                 <p>Type: Combo</p>
               </div>
 
@@ -533,18 +590,20 @@ export default function CreateComboPage() {
                 </div>
               )}
 
-              {/* Create Button */}
+              {/* Update Button */}
               <button
                 onClick={handleSubmit}
-                disabled={creating || form.items.length < 2}
+                disabled={
+                  comboLoading || productsLoading || form.items.length < 2
+                }
                 className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {creating ? (
+                {comboLoading || productsLoading ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                 ) : (
                   <>
                     <Check className="w-5 h-5" />
-                    Create Combo
+                    Update Combo
                   </>
                 )}
               </button>

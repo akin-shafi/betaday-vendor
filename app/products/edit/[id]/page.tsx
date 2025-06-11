@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -23,7 +22,6 @@ const DEFAULT_CATEGORIES = [
   "Other",
 ]
 
-// Define form data interface separate from Product
 interface FormData {
   name: string
   description: string
@@ -38,7 +36,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const { getProduct, updateProduct, updateProductImage, categories } = useProducts()
   const { generateDescription, isLoading: suggestionLoading } = useProductDescriptionSuggestion()
 
-  // Separate form state from product state
   const [originalProduct, setOriginalProduct] = useState<Product | null>(null)
   const [formData, setFormData] = useState<FormData>({
     name: "",
@@ -48,40 +45,53 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     isAvailable: true,
     image: "",
   })
-
+  const [isProductLoading, setIsProductLoading] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [imageModalOpen, setImageModalOpen] = useState(false)
   const [suggestionError, setSuggestionError] = useState<string | null>(null)
 
-  // Simple suggestion states
   const [suggestions, setSuggestions] = useState<ProductSuggestion[]>([])
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  // Use categories from API or fallback to default
   const availableCategories = categories.length > 0 ? categories.map((cat) => cat.name) : DEFAULT_CATEGORIES
 
-  // Initialize form data only once when product is found
+  // Fetch product on mount
   useEffect(() => {
-    const foundProduct = getProduct(params.id)
-    if (foundProduct && !originalProduct) {
-      console.log("Initializing form with product:", foundProduct)
-      setOriginalProduct(foundProduct)
-      setFormData({
-        name: foundProduct.name || "",
-        description: foundProduct.description || "",
-        price: Number(foundProduct.price) || 0,
-        category: foundProduct.category || "",
-        isAvailable: foundProduct.isAvailable ?? true,
-        image: foundProduct.image || "",
-      })
-    } else if (!foundProduct && !originalProduct) {
-      setErrors({ general: "Product not found" })
-    }
-  }, [params.id, getProduct, originalProduct])
+    async function fetchProduct() {
+      setIsProductLoading(true)
+      setErrors({})
 
-  // Handle suggestion selection
+      try {
+        const product = await getProduct(params.id)
+        if (product) {
+          console.log("Initializing form with product:", product)
+          setOriginalProduct(product)
+          setFormData({
+            name: product.name || "",
+            description: product.description || "",
+            price: Number(product.price) || 0,
+            category: product.category || "",
+            isAvailable: product.isAvailable ?? true,
+            image: product.image || "",
+          })
+        } else {
+          setErrors({ general: "Product not found" })
+        }
+      } catch (error) {
+        console.error("Error fetching product:", error)
+        setErrors({
+          general: error instanceof Error ? error.message : "Failed to load product. Please try again.",
+        })
+      } finally {
+        setIsProductLoading(false)
+      }
+    }
+
+    fetchProduct()
+  }, [params.id, getProduct])
+
   const handleSelectSuggestion = (suggestion: ProductSuggestion) => {
     setFormData((prev) => ({
       ...prev,
@@ -93,7 +103,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     setShowSuggestions(false)
     setSuggestions([])
 
-    // Clear any errors for the fields we just filled
     const fieldsToCheck = ["name", "category", "price", "description"]
     const clearedErrors = { ...errors }
     fieldsToCheck.forEach((field) => {
@@ -104,7 +113,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     setErrors(clearedErrors)
   }
 
-  // Handle keyboard navigation for suggestions
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showSuggestions || suggestions.length === 0) return
 
@@ -131,7 +139,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
   }
 
-  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (!(e.target as Element).closest(".suggestion-container")) {
@@ -142,19 +149,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  // Simplified input change handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
 
     console.log("Input change:", name, value)
 
-    // Update form data
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : name === "price" ? Number(value) : value,
     }))
 
-    // Handle name input for suggestions
     if (name === "name") {
       if (value.length >= 2) {
         const newSuggestions = getProductSuggestions(value)
@@ -167,7 +171,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setActiveSuggestionIndex(-1)
     }
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
     }
@@ -184,7 +187,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       const updatedProduct = await updateProductImage(originalProduct.id, file)
       console.log("Upload successful, updated product:", updatedProduct)
 
-      // Update form data with new image
       if (updatedProduct && updatedProduct.image) {
         setFormData((prev) => ({
           ...prev,
@@ -193,7 +195,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         console.log("Form data updated with new image:", updatedProduct.image)
       }
 
-      // Clear any image errors
       if (errors.image) {
         setErrors((prev) => ({ ...prev, image: "" }))
       }
@@ -207,10 +208,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   }
 
   const handleSuggestDescription = async () => {
-    // Clear previous errors
     setSuggestionError(null)
 
-    // Validate required fields
     if (!formData.name.trim()) {
       setSuggestionError("Product name is required for suggestion")
       return
@@ -221,7 +220,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       return
     }
 
-    // Generate description
     const description = await generateDescription(formData.name, formData.category)
 
     if (description) {
@@ -281,7 +279,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
   }
 
-  if (!originalProduct) {
+  if (isProductLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -292,9 +290,21 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     )
   }
 
+  if (!originalProduct) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 text-lg font-semibold">Product not found</p>
+          <Link href="/products" className="mt-4 inline-block text-orange-600 hover:underline">
+            Return to Products
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-3">
@@ -318,7 +328,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           </div>
         )}
 
-        {/* Helper Text */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
           <p className="text-blue-800 text-sm">
             💡 <strong>Tip:</strong> Start typing a product name to see suggestions. Selecting a suggestion will
@@ -327,10 +336,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Product Image */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h3 className="font-semibold text-gray-900 mb-4">Product Image</h3>
-
             <div className="flex flex-col items-center space-y-4">
               <div className="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300 overflow-hidden">
                 {formData.image ? (
@@ -338,13 +345,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                     src={formData.image || "/placeholder.svg"}
                     alt="Product"
                     className="w-full h-full object-cover rounded-lg"
-                    key={formData.image} // Force re-render when image changes
+                    key={formData.image}
                   />
                 ) : (
                   <Camera className="w-8 h-8 text-gray-400" />
                 )}
               </div>
-
               <button
                 type="button"
                 onClick={() => setImageModalOpen(true)}
@@ -354,16 +360,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 <Camera className="w-4 h-4 mr-2" />
                 {formData.image ? "Change Image" : "Upload Image"}
               </button>
-
               {errors.image && <p className="text-red-600 text-sm">{errors.image}</p>}
             </div>
           </div>
 
-          {/* Product Details */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 space-y-4">
             <h3 className="font-semibold text-gray-900">Product Details</h3>
-
-            {/* Product Name with Auto-suggestions */}
             <div className="relative suggestion-container">
               <label className="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
               <input
@@ -386,8 +388,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 placeholder="Start typing product name..."
               />
               {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
-
-              {/* Suggestions Dropdown */}
               {showSuggestions && suggestions.length > 0 && (
                 <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
                   {suggestions.map((suggestion, suggestionIndex) => (
@@ -514,7 +514,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={isLoading}
@@ -535,7 +534,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         </form>
       </main>
 
-      {/* Image Upload Modal */}
       <ImageUploadModal
         isOpen={imageModalOpen}
         onClose={() => setImageModalOpen(false)}

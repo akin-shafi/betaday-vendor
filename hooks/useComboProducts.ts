@@ -21,6 +21,9 @@ export interface CreateComboData {
   items: ComboItem[]
   price: number
   businessId: string
+  categories: string[]
+  isAvailable: boolean
+  isCombo: boolean
 }
 
 export function useComboProducts() {
@@ -46,10 +49,19 @@ export function useComboProducts() {
       setIsLoading(true)
       setError(null)
 
+      const payload = {
+        ...comboData,
+        categories: ["Combos"],
+        isAvailable: true,
+        isCombo: true,
+      }
+
+      console.log("Creating combo with payload:", payload)
+
       const response = await fetch(`${baseUrl}/products/combo`, {
         method: "POST",
         headers: getAuthHeaders(),
-        body: JSON.stringify(comboData),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -58,6 +70,7 @@ export function useComboProducts() {
       }
 
       const data = await response.json()
+      console.log("Combo created successfully:", data)
       return data.combo
     } catch (error) {
       console.error("Error creating combo:", error)
