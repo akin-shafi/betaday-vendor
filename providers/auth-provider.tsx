@@ -17,7 +17,6 @@ import {
   getSessionToken,
   updateLastActivity,
   shouldRefreshSession,
-  checkInactivity,
   type Vendor,
 } from "@/lib/session";
 
@@ -81,8 +80,8 @@ interface AuthContextType {
 // Create the context with a default value
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// 4 hours for session timeout
-const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+// Change from 30 minutes to 4 hours for better user experience
+const SESSION_TIMEOUT = 4 * 60 * 60 * 1000; // 4 hours instead of 30 minutes
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [vendor, setVendor] = useState<Vendor | null>(null);
@@ -152,11 +151,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [logout]);
 
-  // Session timeout and inactivity management
+  // Session timeout management with auto-refresh
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null;
     let refreshCheckId: NodeJS.Timeout | null = null;
-    let inactivityCheckId: NodeJS.Timeout | null = null;
 
     const resetTimeout = () => {
       if (timeoutId) clearTimeout(timeoutId);
@@ -174,14 +172,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const checkInactivityTimeout = () => {
-      if (checkInactivity(SESSION_TIMEOUT)) {
-        clearSession();
-        setVendor(null);
-        router.push("/auth/login?message=Session expired due to inactivity");
-      }
-    };
-
     const handleActivity = () => {
       if (vendor) {
         updateLastActivity();
@@ -196,7 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       "scroll",
       "touchstart",
       "click",
-      "keydown", // Added to match useSession example
     ];
 
     if (vendor && isInitialized) {
@@ -207,15 +196,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Check for session refresh every hour
       refreshCheckId = setInterval(checkAndRefreshSession, 60 * 60 * 1000); // 1 hour
-
-      // Check for inactivity every minute
-      inactivityCheckId = setInterval(checkInactivityTimeout, 60 * 1000); // 1 minute
     }
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
       if (refreshCheckId) clearInterval(refreshCheckId);
-      if (inactivityCheckId) clearInterval(inactivityCheckId);
       events.forEach((event) =>
         document.removeEventListener(event, handleActivity)
       );
@@ -228,6 +213,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       try {
         const session = getSession();
+        // console.log("Initializing auth with session:", session);
+
         if (session?.user && session?.token) {
           // Validate token with real API
           await validateToken(session.token);
@@ -268,6 +255,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!vendorData?.id) {
         throw new Error("Invalid vendor data received");
       }
+
+      // console.log("Validate token response:", vendorData);
+      // console.log("Business data from validate token:", vendorData.business);
 
       // Ensure business data is properly structured
       const completeVendorData: Vendor = {
@@ -765,14 +755,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Don't render children until context is initialized
   if (!isInitialized) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Initializing...</p>
-        </div>
-      </div>
-    );
+    return null;
+
+    // (
+    //   <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    //     <div className="text-center">
+    //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+    //       <p className="mt-4 text-gray-600">Initializing...</p>
+    //     </div>
+    //   </div>
+    // );
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
