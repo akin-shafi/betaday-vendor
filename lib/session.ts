@@ -217,6 +217,29 @@ export const updateLastActivity = () => {
   }
 }
 
+export const checkInactivity = (maxInactiveTime = 30 * 60 * 1000) => {
+  // 30 minutes default
+  try {
+    const sessionData = localStorage.getItem("session");
+    if (!sessionData) return true;
+
+    const session = JSON.parse(sessionData);
+
+    // Skip inactivity check for remembered sessions
+    if (session.rememberMe) return false;
+
+    if (!session.lastActivity) return true;
+
+    const lastActivity = new Date(session.lastActivity).getTime();
+    const currentTime = new Date().getTime();
+
+    return currentTime - lastActivity > maxInactiveTime;
+  } catch (error) {
+    console.error("Error checking inactivity:", error);
+    return true;
+  }
+};
+
 export const shouldRefreshSession = (): boolean => {
   const session = getSession()
   if (!session?.timestamp) return false
