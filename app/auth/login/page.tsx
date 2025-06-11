@@ -22,10 +22,10 @@ export default function LoginPage() {
 
   const [isPhone, setIsPhone] = useState(false);
   const [formData, setFormData] = useState({
-    // identifier: "betadayfinance@gmail.com",
-    // password: "Vendor@123",
-    identifier: "",
-    password: "",
+    identifier: "betadayfinance@gmail.com",
+    password: "Vendor@123",
+    // identifier: "",
+    // password: "",
     rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);

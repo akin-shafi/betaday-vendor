@@ -6,6 +6,7 @@ export interface Product {
   price: number
   category: string
   isAvailable: boolean
+  isCombo:boolean
   image: string | null
   businessId: string
   createdAt: string

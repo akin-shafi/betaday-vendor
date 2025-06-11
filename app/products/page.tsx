@@ -401,7 +401,7 @@ export default function ProductsPage() {
                           View
                         </button>
                       </Link>
-                      <Link href={`/products/edit/${product.id}`}>
+                      <Link href={product.isCombo ? `/products/edit-combo/${product.id}` : `/products/edit/${product.id}`}>
                         <button className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-1">
                           <Edit className="w-4 h-4" />
                           <span>Edit</span>

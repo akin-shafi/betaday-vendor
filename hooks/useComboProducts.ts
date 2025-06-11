@@ -57,12 +57,14 @@ export function useComboProducts() {
       }
 
       console.log("Creating combo with payload:", payload)
-
-      const response = await fetch(`${baseUrl}/products/combo`, {
+      
+      const response = await fetch(`${baseUrl}/products/single`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
       })
+
+ 
 
       if (!response.ok) {
         const errorData = await response.json()
