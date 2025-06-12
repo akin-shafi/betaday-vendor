@@ -15,6 +15,7 @@ import {
 import { useProducts } from "@/hooks/useProducts";
 import { useBusiness } from "@/hooks/useBusiness";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
+import { ProductSkeleton } from "@/components/skeletons/ProductSkeleton";
 
 export default function ProductsPage() {
   const { business } = useBusiness();
@@ -94,14 +95,7 @@ export default function ProductsPage() {
     : "";
 
   if (!business) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading business information...</p>
-        </div>
-      </div>
-    );
+    return <ProductSkeleton />;
   }
 
   return (
@@ -401,7 +395,13 @@ export default function ProductsPage() {
                           View
                         </button>
                       </Link>
-                      <Link href={product.isCombo ? `/products/edit-combo/${product.id}` : `/products/edit/${product.id}`}>
+                      <Link
+                        href={
+                          product.isCombo
+                            ? `/products/edit-combo/${product.id}`
+                            : `/products/edit/${product.id}`
+                        }
+                      >
                         <button className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-1">
                           <Edit className="w-4 h-4" />
                           <span>Edit</span>
