@@ -220,6 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await validateToken(session.token);
         } else {
           setVendor(null);
+          router.push("/auth/login");
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
@@ -244,7 +245,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.status === 401) {
-        throw new Error("Unauthorized: Invalid or expired token");
+        // throw new Error("Unauthorized: Invalid or expired token");
+        console.log("Unauthorized: Invalid or expired token");
+
+        router.push("/auth/login");
       }
 
       if (!response.ok) {
