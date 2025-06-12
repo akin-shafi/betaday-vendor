@@ -17,7 +17,6 @@ import {
   getSessionToken,
   updateLastActivity,
   shouldRefreshSession,
-  checkInactivity,
   type Vendor,
 } from "@/lib/session";
 
@@ -81,10 +80,10 @@ interface AuthContextType {
 // Create the context with a default value
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Set session timeout to 1 hour to match backend token
+// Changed to 1 hour to match backend token expiration
 const SESSION_TIMEOUT = 1 * 60 * 60 * 1000; // 1 hour
-// Set inactivity timeout to 10 seconds for testing (30 minutes in production - 30 * 60 * 1000)
-const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 10 seconds for testing
+// Inactivity timeout set to 10 seconds for testing (use 30 * 60 * 1000 for 30 minutes in production)
+const INACTIVITY_TIMEOUT = 10 * 1000; // 10 seconds for testing
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [vendor, setVendor] = useState<Vendor | null>(null);
@@ -97,14 +96,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleSessionTimeout = useCallback(() => {
     clearSession();
-    // setVendor(null);
+    setVendor(null);
     router.push("/auth/login?message=Session expired. Please login again.");
+  }, [router]);
+
+  const handleInactivityTimeout = useCallback(() => {
+    clearSession();
+    setVendor(null);
+    router.push(
+      "/auth/login?message=Session expired due to inactivity. Please login again."
+    );
   }, [router]);
 
   const logout = useCallback(() => {
     clearSession();
     setVendor(null);
-    router.push("/auth/login?message=logout succesfully");
+    router.push("/auth/login");
   }, [router]);
 
   // Update the refreshVendor function to better handle business data
@@ -154,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [logout]);
 
-  // Session timeout and inactivity management
+  // Session timeout management with auto-refresh and inactivity check
   useEffect(() => {
     let sessionTimeoutId: NodeJS.Timeout | null = null;
     let inactivityTimeoutId: NodeJS.Timeout | null = null;
@@ -163,13 +170,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const resetTimeouts = () => {
       if (sessionTimeoutId) clearTimeout(sessionTimeoutId);
       if (inactivityTimeoutId) clearTimeout(inactivityTimeoutId);
-
       sessionTimeoutId = setTimeout(handleSessionTimeout, SESSION_TIMEOUT);
-      inactivityTimeoutId = setTimeout(() => {
-        if (checkInactivity(INACTIVITY_TIMEOUT)) {
-          handleSessionTimeout();
-        }
-      }, INACTIVITY_TIMEOUT);
+      inactivityTimeoutId = setTimeout(
+        handleInactivityTimeout,
+        INACTIVITY_TIMEOUT
+      );
     };
 
     const checkAndRefreshSession = async () => {
@@ -205,8 +210,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       );
       resetTimeouts();
 
-      // Check for session refresh every 15 minutes
-      refreshCheckId = setInterval(checkAndRefreshSession, 15 * 60 * 1000);
+      // Check for session refresh every hour
+      refreshCheckId = setInterval(checkAndRefreshSession, 60 * 60 * 1000); // 1 hour
     }
 
     return () => {
@@ -217,7 +222,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         document.removeEventListener(event, handleActivity)
       );
     };
-  }, [vendor, handleSessionTimeout, isInitialized, refreshVendor]);
+  }, [
+    vendor,
+    handleSessionTimeout,
+    handleInactivityTimeout,
+    isInitialized,
+    refreshVendor,
+  ]);
 
   // Initialize authentication on mount
   useEffect(() => {
@@ -225,13 +236,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       try {
         const session = getSession();
+        // console.log("Initializing auth with session:", session);
+
         if (session?.user && session?.token) {
           // Validate token with real API
           await validateToken(session.token);
         } else {
           setVendor(null);
-          // router.push("/auth/login");
-          router.push("/auth/login?message=initializeAuth");
+          router.push("/auth/login");
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
@@ -256,7 +268,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.status === 401) {
+        // throw new Error("Unauthorized: Invalid or expired token");
         console.log("Unauthorized: Invalid or expired token");
+
         router.push("/auth/login");
       }
 
@@ -268,6 +282,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!vendorData?.id) {
         throw new Error("Invalid vendor data received");
       }
+
+      // console.log("Validate token response:", vendorData);
+      // console.log("Business data from validate token:", vendorData.business);
 
       // Ensure business data is properly structured
       const completeVendorData: Vendor = {
@@ -355,7 +372,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: vendorData,
         token: "",
         rememberMe: false,
-      });
+      }); // Store user data temporarily without token
       setVendor(vendorData);
 
       await router.push(
@@ -381,6 +398,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let response;
       if (isPhoneNumber) {
+        // Phone login - send OTP
         console.log("Attempting phone login for:", data.identifier);
         response = await fetch(`${baseUrl}/users/login/phone`, {
           method: "POST",
@@ -395,6 +413,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
         }
 
+        // For phone login, redirect to OTP page
         console.log("Phone login successful, OTP sent");
         router.push(
           `/auth/verify-otp?phone=${encodeURIComponent(
@@ -403,6 +422,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
         return;
       } else {
+        // Email login - require password
         if (!data.password) {
           throw new Error("Password is required for email login");
         }
@@ -436,9 +456,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error("Invalid response from server");
         }
 
-        // console.log("Login response data:", responseData);
-        // console.log("Business data from login:", vendorData.business);
+        console.log("Login response data:", responseData);
+        console.log("Business data from login:", vendorData.business);
 
+        // Ensure business data is properly structured
         const completeVendorData: Vendor = {
           ...vendorData,
           business: vendorData.business || null,
@@ -730,7 +751,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       clearSession();
       setVendor(null);
-      router.push("/auth/login");
+      await router.push("/auth/login");
 
       return { success: true };
     } catch (error) {
@@ -759,8 +780,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshVendor,
   };
 
+  // Don't render children until context is initialized
   if (!isInitialized) {
     return null;
+
+    // (
+    //   <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    //     <div className="text-center">
+    //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+    //       <p className="mt-4 text-gray-600">Initializing...</p>
+    //     </div>
+    //   </div>
+    // );
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

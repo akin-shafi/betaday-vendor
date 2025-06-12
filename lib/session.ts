@@ -36,11 +36,10 @@ interface Session {
 
 // Session duration constants
 const SESSION_DURATIONS = {
-  SHORT: 24 * 60 * 60 * 1000, // 24 hours (1 day)
-  LONG: 7 * 24 * 60 * 60 * 1000, // 7 days instead of 30 days
+  SHORT: 1 * 60 * 60 * 1000, // 1 hour
+  LONG: 7 * 24 * 60 * 60 * 1000, // 7 days
 } as const
 
-// Session storage utilities with improved error handling
 export const getSession = (): Session | null => {
   if (typeof window === "undefined") return null
 
@@ -75,7 +74,6 @@ export const getSession = (): Session | null => {
   }
 }
 
-// Update the setSession function to handle remember me preference
 export const setSession = (session: Omit<Session, "timestamp" | "expiresAt">) => {
   try {
     const now = new Date().getTime()
@@ -97,8 +95,6 @@ export const setSession = (session: Omit<Session, "timestamp" | "expiresAt">) =>
 
     localStorage.setItem("session", JSON.stringify(sessionWithTimestamp))
     localStorage.setItem("lastActivity", now.toString())
-
-    console.log(`Session set with ${session.rememberMe ? "30 days" : "24 hours"} duration`)
   } catch (error) {
     console.error("Error saving session:", error)
   }
@@ -174,7 +170,7 @@ export const getSessionExpiryInfo = (): {
   if (!session) return null
 
   const timeRemaining = getSessionTimeRemaining()
-  const isExpiringSoon = timeRemaining < 2 * 60 * 60 * 1000 // Less than 2 hours
+  const isExpiringSoon = timeRemaining < 15 * 60 * 1000 // Less than 15 minutes
 
   return {
     timeRemaining,
@@ -217,22 +213,12 @@ export const updateLastActivity = () => {
   }
 }
 
-export const checkInactivity = (maxInactiveTime = 30 * 60 * 1000) => {
-  // 30 minutes default
+export const checkInactivity = (maxInactiveTime = 10 * 1000) => {
   try {
-    const sessionData = localStorage.getItem("session");
-    if (!sessionData) return true;
+    const lastActivity = getLastActivity();
+    if (!lastActivity) return true;
 
-    const session = JSON.parse(sessionData);
-
-    // Skip inactivity check for remembered sessions
-    if (session.rememberMe) return false;
-
-    if (!session.lastActivity) return true;
-
-    const lastActivity = new Date(session.lastActivity).getTime();
     const currentTime = new Date().getTime();
-
     return currentTime - lastActivity > maxInactiveTime;
   } catch (error) {
     console.error("Error checking inactivity:", error);
@@ -246,11 +232,10 @@ export const shouldRefreshSession = (): boolean => {
 
   const now = new Date().getTime()
   const sessionAge = now - session.timestamp
-  const refreshThreshold = 12 * 60 * 60 * 1000 // 12 hours
+  const refreshThreshold = 45 * 60 * 1000 // 45 minutes
 
   return sessionAge > refreshThreshold
 }
 
-// Export types for use in other files
 export type { Session, Vendor, Business }
 export { SESSION_DURATIONS }
