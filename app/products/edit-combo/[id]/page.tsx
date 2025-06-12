@@ -31,7 +31,7 @@ interface ComboForm {
 
 export default function EditComboPage() {
   const router = useRouter();
-  const { id } = useParams(); // Get combo ID from URL
+  const { id } = useParams();
   const { business } = useBusiness();
   const {
     products,
@@ -76,11 +76,12 @@ export default function EditComboPage() {
           items:
             combo.items?.map((item: ComboItem) => ({
               ...item,
+              required: item.required ?? false, // Ensure required field is set
               product:
                 products.find((p) => p.id === item.productId) || item.product,
             })) || [],
           customPrice: combo.price.toString(),
-          useCustomPrice: true, // Assume custom price for editing
+          useCustomPrice: true,
           isAvailable: combo.isAvailable ?? true,
         });
       } catch (error) {
@@ -92,7 +93,7 @@ export default function EditComboPage() {
     };
 
     fetchCombo();
-  }, [id, getProduct, products]); // Depend on id, getProduct, and products
+  }, [id, getProduct, products]);
 
   // Filter products for search
   const filteredProducts = products.filter(
@@ -119,6 +120,7 @@ export default function EditComboPage() {
     const newItem: ComboItem = {
       productId,
       quantity: 1,
+      required: false, // Default to optional
       product: {
         id: product.id,
         name: product.name,
@@ -146,6 +148,16 @@ export default function EditComboPage() {
       ...prev,
       items: prev.items.map((item) =>
         item.productId === productId ? { ...item, quantity } : item
+      ),
+    }));
+  };
+
+  // Toggle required status
+  const toggleRequired = (productId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.map((item) =>
+        item.productId === productId ? { ...item, required: !item.required } : item
       ),
     }));
   };
@@ -196,6 +208,7 @@ export default function EditComboPage() {
         items: form.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
+          required: item.required, // Include required field
         })),
         price: finalPrice,
         categories: ["Combos"],
@@ -296,7 +309,7 @@ export default function EditComboPage() {
                       description: e.target.value,
                     }))
                   }
-                  rows={3}
+                  rows={2}
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 resize-none ${
                     errors.description ? "border-red-300" : ""
                   }`}
@@ -397,6 +410,21 @@ export default function EditComboPage() {
                       <p className="text-sm text-gray-600">
                         {formatCurrency(item.product?.price || 0)} each
                       </p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <input
+                          type="checkbox"
+                          id={`required-${item.productId}`}
+                          checked={item.required}
+                          onChange={() => toggleRequired(item.productId)}
+                          className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                        />
+                        <label
+                          htmlFor={`required-${item.productId}`}
+                          className="text-sm text-gray-700"
+                        >
+                          Required
+                        </label>
+                      </div>
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -551,7 +579,8 @@ export default function EditComboPage() {
                         className="flex justify-between text-sm"
                       >
                         <span className="text-gray-600">
-                          {item.quantity}x {item.product?.name}
+                          {item.quantity}x {item.product?.name}{" "}
+                          {item.required ? "(Required)" : ""}
                         </span>
                         <span className="font-medium">
                           {formatCurrency(
@@ -617,6 +646,7 @@ export default function EditComboPage() {
       {/* Product Selector Modal */}
       {showProductSelector && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          iniciando
           <div className="bg-white rounded-lg w-full max-w-md max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">
@@ -660,26 +690,24 @@ export default function EditComboPage() {
                     <button
                       key={product.id}
                       onClick={() => addProduct(product.id)}
-                      className="w-full flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg text-left"
+                      className="flex items-center justify-between w-full p-3 hover:bg-gray-50 rounded-lg text-left"
                     >
-                      <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-                        {product.image ? (
-                          <img
-                            src={product.image || "/placeholder.svg"}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Package className="w-5 h-5 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">
-                          {product.name}
-                        </h4>
-                        <p className="text-sm text-gray-600">
-                          {formatCurrency(product.price)}
-                        </p>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                          {product.image ? (
+                            <img
+                              src={product.image || "/placeholder.svg"}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-gray-400">No Image</span>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">{product.name}</h4>
+                          <p className="text-sm text-gray-600">{formatCurrency(product.price)}</p>
+                        </div>
                       </div>
                       <Plus className="w-5 h-5 text-orange-600" />
                     </button>

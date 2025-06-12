@@ -7,6 +7,7 @@ import { useBusiness } from "@/hooks/useBusiness"
 export interface ComboItem {
   productId: string
   quantity: number
+  required:boolean
   product?: {
     id: string
     name: string

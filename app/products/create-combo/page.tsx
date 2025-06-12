@@ -71,6 +71,7 @@ export default function CreateComboPage() {
     const newItem: ComboItem = {
       productId,
       quantity: 1,
+      required: false, // Default to optional
       product: {
         id: product.id,
         name: product.name,
@@ -98,6 +99,18 @@ export default function CreateComboPage() {
       ...prev,
       items: prev.items.map((item) =>
         item.productId === productId ? { ...item, quantity } : item
+      ),
+    }));
+  };
+
+  // Toggle required status
+  const toggleRequired = (productId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.map((item) =>
+        item.productId === productId
+          ? { ...item, required: !item.required }
+          : item
       ),
     }));
   };
@@ -148,12 +161,13 @@ export default function CreateComboPage() {
         items: form.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
+          required: item.required, // Include required field
         })),
         price: finalPrice,
         businessId: business.id,
-        categories: ["Combos"], // Added to match payload
-        isAvailable: true, // Added to match payload
-        isCombo: true, // Added to match payload
+        categories: ["Combos"],
+        isAvailable: true,
+        isCombo: true,
       };
 
       await createCombo(comboData);
@@ -338,6 +352,21 @@ export default function CreateComboPage() {
                       <p className="text-sm text-gray-600">
                         {formatCurrency(item.product?.price || 0)} each
                       </p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <input
+                          type="checkbox"
+                          id={`required-${item.productId}`}
+                          checked={item.required}
+                          onChange={() => toggleRequired(item.productId)}
+                          className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                        />
+                        <label
+                          htmlFor={`required-${item.productId}`}
+                          className="text-sm text-gray-700"
+                        >
+                          Required
+                        </label>
+                      </div>
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -492,7 +521,8 @@ export default function CreateComboPage() {
                         className="flex justify-between text-sm"
                       >
                         <span className="text-gray-600">
-                          {item.quantity}x {item.product?.name}
+                          {item.quantity}x {item.product?.name}{" "}
+                          {item.required ? "(Required)" : ""}
                         </span>
                         <span className="font-medium">
                           {formatCurrency(
