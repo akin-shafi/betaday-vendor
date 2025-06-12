@@ -23,7 +23,7 @@ export default function ProductsPage() {
     useProducts();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("available");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -186,7 +186,7 @@ export default function ProductsPage() {
 
           {/* Filter Chips */}
           <div className="flex items-center space-x-2 overflow-x-auto pb-2">
-            <button
+            {/* <button
               onClick={() => setSelectedCategory("all")}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 selectedCategory === "all"
@@ -195,7 +195,7 @@ export default function ProductsPage() {
               }`}
             >
               All Products ({products.length})
-            </button>
+            </button> */}
             <button
               onClick={() => setSelectedCategory("available")}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
