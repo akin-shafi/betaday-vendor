@@ -5,10 +5,7 @@ import Link from "next/link";
 import {
   Package,
   DollarSign,
-  Star,
   TrendingUp,
-  Plus,
-  Eye,
   Bell,
   Menu,
   User,
@@ -21,6 +18,8 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  CheckCircle,
+  Calendar,
 } from "lucide-react";
 import { useAuth } from "@/providers/auth-provider";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -29,12 +28,20 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 
 function DashboardContent() {
   const { vendor, logout } = useAuth();
-  const { stats, isLoading, error } = useDashboardStats();
+  const { stats, isLoading, error, refetch } = useDashboardStats();
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [expandedOrderIndex, setExpandedOrderIndex] = useState<number | null>(
     null
   );
+  const [filter, setFilter] = useState<{
+    period: "day" | "week" | "month" | "year" | null;
+    startDate?: string;
+    endDate?: string;
+  }>({ period: "month" });
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState<string>("");
+  const [tempEndDate, setTempEndDate] = useState<string>("");
 
   useEffect(() => {
     // Check onboarding status
@@ -53,13 +60,58 @@ function DashboardContent() {
     setExpandedOrderIndex(expandedOrderIndex === index ? null : index);
   };
 
+  const handlePeriodChange = (period: "day" | "week" | "month" | "year") => {
+    setFilter({ period });
+    setShowCustomDatePicker(false);
+    setTempStartDate("");
+    setTempEndDate("");
+    refetch(period);
+  };
+
+  const handleCustomDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name === "startDate") {
+      setTempStartDate(value);
+    } else if (name === "endDate") {
+      setTempEndDate(value);
+    }
+  };
+
+  const applyCustomDateRange = () => {
+    if (tempStartDate && tempEndDate) {
+      const start = new Date(tempStartDate);
+      const end = new Date(tempEndDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= end) {
+        setFilter({
+          period: null,
+          startDate: tempStartDate,
+          endDate: tempEndDate,
+        });
+        refetch("custom", { startDate: tempStartDate, endDate: tempEndDate });
+      }
+    }
+  };
+
+  const toggleCustomDatePicker = () => {
+    setShowCustomDatePicker((prev) => {
+      if (prev) {
+        setTempStartDate("");
+        setTempEndDate("");
+        setFilter({ period: "month" });
+        refetch("month");
+      }
+      return !prev;
+    });
+  };
+
   // Use API data or fallback to defaults
   const dashboardStats = {
     totalProducts: stats?.totalProducts || 0,
     totalEarnings: stats?.totalRevenue || 0,
-    averageRating: 4.8, // This might come from a different endpoint
+    averageRating: 4.8,
     totalOrders: stats?.totalOrders || 0,
     pendingOrders: stats?.pendingOrders || 0,
+    deliveredOrders: stats?.ordersByStatus?.delivered || 0,
     walletBalance: stats?.walletBalance || 0,
   };
 
@@ -81,7 +133,6 @@ function DashboardContent() {
               </p>
             </div>
           </div>
-
           <div className="flex items-center space-x-3">
             <button className="relative p-2">
               <Bell className="w-5 h-5 text-gray-600" />
@@ -97,8 +148,6 @@ function DashboardContent() {
             </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
         {showMobileMenu && (
           <div className="bg-white border-t border-gray-200 p-4">
             <div className="space-y-3">
@@ -157,7 +206,6 @@ function DashboardContent() {
       </header>
 
       <main className="p-4 space-y-6 mb-20">
-        {/* Onboarding Alert */}
         {!isOnboardingComplete && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
@@ -189,7 +237,6 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Error State */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
@@ -210,12 +257,72 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Stats Grid */}
+        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+          <h3 className="text-sm font-medium text-gray-900 mb-2">
+            Filter by Time Period
+          </h3>
+          <div className="flex flex-col space-y-2">
+            <select
+              value={filter.period || ""}
+              onChange={(e) =>
+                handlePeriodChange(
+                  e.target.value as "day" | "week" | "month" | "year"
+                )
+              }
+              className="w-full p-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-600"
+              disabled={showCustomDatePicker}
+            >
+              <option value="day">Last 24 Hours</option>
+              <option value="week">Last 7 Days</option>
+              <option value="month">Last 30 Days</option>
+              <option value="year">Last 365 Days</option>
+            </select>
+            <button
+              onClick={toggleCustomDatePicker}
+              className="flex items-center space-x-2 text-orange-600 text-sm font-medium hover:text-orange-800"
+            >
+              <Calendar className="w-4 h-4" />
+              <span>
+                {showCustomDatePicker
+                  ? "Hide Custom Range"
+                  : "Select Custom Date Range"}
+              </span>
+            </button>
+            {showCustomDatePicker && (
+              <div className="flex flex-col space-y-2 mt-2">
+                <input
+                  type="date"
+                  name="startDate"
+                  value={tempStartDate}
+                  onChange={handleCustomDateChange}
+                  className="p-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-600"
+                  placeholder="Start Date"
+                />
+                <input
+                  type="date"
+                  name="endDate"
+                  value={tempEndDate}
+                  onChange={handleCustomDateChange}
+                  className="p-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-600"
+                  placeholder="End Date"
+                />
+                <button
+                  onClick={applyCustomDateRange}
+                  disabled={!tempStartDate || !tempEndDate}
+                  className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Products</p>
+                <p className="text-sm text-gray-600">Delivered Orders</p>
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
@@ -223,7 +330,7 @@ function DashboardContent() {
                   </div>
                 ) : (
                   <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStats.totalProducts}
+                    {dashboardStats.deliveredOrders}
                   </p>
                 )}
               </div>
@@ -232,7 +339,6 @@ function DashboardContent() {
               </div>
             </div>
           </div>
-
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
@@ -253,7 +359,6 @@ function DashboardContent() {
               </div>
             </div>
           </div>
-
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
@@ -274,7 +379,6 @@ function DashboardContent() {
               </div>
             </div>
           </div>
-
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
@@ -297,9 +401,6 @@ function DashboardContent() {
           </div>
         </div>
 
-
-
-        {/* Recent Orders */}
         <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -312,7 +413,6 @@ function DashboardContent() {
               View All
             </Link>
           </div>
-
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -323,19 +423,17 @@ function DashboardContent() {
           ) : stats?.recentOrders && stats.recentOrders.length > 0 ? (
             <div className="space-y-3">
               {stats.recentOrders.map((order, index) => {
-                // Calculate total amount from orderItems
                 const amount = order.orderItems.reduce(
                   (sum, item) => sum + Number(item.price) * item.quantity,
                   0
                 );
-                // Use the first orderItem's created_at as the order date
                 const orderDate = order.orderItems[0]?.created_at;
-                // Skip rendering if no valid date
                 if (!orderDate || isNaN(new Date(orderDate).getTime())) {
                   return null;
                 }
                 const { date, time } = formatDate(orderDate);
                 const itemName = order.orderItems[0]?.name || "Unknown Item";
+                const status = order.orderItems[0]?.status || "Unknown";
 
                 return (
                   <div key={index} className="bg-gray-50 rounded-lg">
@@ -346,7 +444,7 @@ function DashboardContent() {
                       <div className="flex-1">
                         <p className="font-bold text-gray-900">{itemName}</p>
                         <p className="text-sm text-gray-600">
-                          {order.user} ({time})
+                          {order.user} ({date} • {time})
                         </p>
                       </div>
                       <div className="text-right flex items-center space-x-2">
@@ -354,7 +452,22 @@ function DashboardContent() {
                           <p className="font-semibold text-gray-900">
                             {formatCurrency(amount)}
                           </p>
-                          <p className="text-sm text-yellow-600">Pending</p>
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              status.toLowerCase() === "delivered" ||
+                              status.toLowerCase() === "completed"
+                                ? "bg-green-100 text-green-800"
+                                : status.toLowerCase() === "pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {(status.toLowerCase() === "delivered" ||
+                              status.toLowerCase() === "completed") && (
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                            )}
+                            {status}
+                          </span>
                         </div>
                         {expandedOrderIndex === index ? (
                           <ChevronUp className="w-5 h-5 text-gray-600" />
@@ -382,6 +495,10 @@ function DashboardContent() {
                               <p>
                                 <span className="font-medium">Price:</span>{" "}
                                 {formatCurrency(Number(item.price))}
+                              </p>
+                              <p>
+                                <span className="font-medium">Status:</span>{" "}
+                                {item.status}
                               </p>
                               <p>
                                 <span className="font-medium">Order ID:</span>{" "}
@@ -421,7 +538,6 @@ function DashboardContent() {
         </div>
       </main>
 
-      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
         <div className="flex items-center justify-around">
           <Link
