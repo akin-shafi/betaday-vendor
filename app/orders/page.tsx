@@ -1,3 +1,4 @@
+// app/orders/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -8,28 +9,21 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Eye,
   ChevronLeft,
   ChevronRight,
   Loader2,
 } from "lucide-react";
 import { useOrders } from "@/hooks/useOrders";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function OrdersPage() {
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("pending");
   const { orders, pagination, isLoading, error, changePage, changeStatus } =
-    useOrders();
-
-  const handleTabChange = (status: string) => {
-    setActiveTab(status);
-    changeStatus(status);
-  };
+    useOrders({ page: 1, limit: 10, status: "pending" });
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case "delivered":
-      case "completed":
         return "bg-green-100 text-green-800";
       case "pending":
         return "bg-yellow-100 text-yellow-800";
@@ -43,7 +37,6 @@ export default function OrdersPage() {
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case "delivered":
-      case "completed":
         return <CheckCircle className="w-4 h-4" />;
       case "pending":
         return <Clock className="w-4 h-4" />;
@@ -52,21 +45,6 @@ export default function OrdersPage() {
       default:
         return <Package className="w-4 h-4" />;
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return {
-      date: new Intl.DateTimeFormat("en-NG", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }).format(date),
-      time: new Intl.DateTimeFormat("en-NG", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date),
-    };
   };
 
   return (
@@ -93,17 +71,10 @@ export default function OrdersPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="flex border-b border-gray-200">
             <button
-              onClick={() => handleTabChange("all")}
-              className={`flex-1 py-3 px-4 text-sm font-medium ${
-                activeTab === "all"
-                  ? "text-orange-600 border-b-2 border-orange-600"
-                  : "text-gray-500"
-              }`}
-            >
-              All Orders
-            </button>
-            <button
-              onClick={() => handleTabChange("pending")}
+              onClick={() => {
+                setActiveTab("pending");
+                changeStatus("pending");
+              }}
               className={`flex-1 py-3 px-4 text-sm font-medium ${
                 activeTab === "pending"
                   ? "text-orange-600 border-b-2 border-orange-600"
@@ -113,14 +84,17 @@ export default function OrdersPage() {
               Pending
             </button>
             <button
-              onClick={() => handleTabChange("completed")}
+              onClick={() => {
+                setActiveTab("delivered");
+                changeStatus("delivered");
+              }}
               className={`flex-1 py-3 px-4 text-sm font-medium ${
-                activeTab === "completed"
+                activeTab === "delivered"
                   ? "text-orange-600 border-b-2 border-orange-600"
                   : "text-gray-500"
               }`}
             >
-              Completed
+              Delivered
             </button>
           </div>
 
@@ -154,7 +128,7 @@ export default function OrdersPage() {
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
-                            <h3 className="font-semibold text-gray-900">
+                            <h3 className="font-semibold text-gray-900 truncate-text">
                               Order #{order.id}
                             </h3>
                             <span
@@ -179,13 +153,6 @@ export default function OrdersPage() {
                           <p className="font-bold text-gray-900">
                             {formatCurrency(order.amount)}
                           </p>
-                          <Link
-                            href={`/orders/${order.id}`}
-                            className="text-orange-600 text-sm mt-1 flex items-center justify-end"
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Link>
                         </div>
                       </div>
 
@@ -202,17 +169,6 @@ export default function OrdersPage() {
                               </span>
                             ))}
                           </div>
-                        </div>
-                      )}
-
-                      {order.status.toLowerCase() === "pending" && (
-                        <div className="flex space-x-2 mt-4">
-                          <button className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium">
-                            Accept
-                          </button>
-                          <button className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-medium">
-                            Decline
-                          </button>
                         </div>
                       )}
                     </div>
