@@ -3,20 +3,33 @@
 import { useState, useEffect } from "react"
 import { getSession } from "@/lib/session"
 
-interface RecentOrder {
+interface OrderItem {
   id: string
-  customerName: string
-  amount: number
-  status: string
-  date: string
+  orderId: string
+  itemId: string
+  quantity: number
+  itemType: string
+  packId: string | null
+  price: string
+  name: string
+  specialInstructions: string | null
+  created_at: string
+  updated_at: string
 }
 
-export interface DashboardStats {
+interface RecentOrder {
+  user: string
+  orderItems: OrderItem[]
+}
+
+interface DashboardStats {
   totalOrders: number
-  totalCustomers: number
-  totalProducts: number
   totalRevenue: number
+  pendingOrders: number
+  totalProducts: number
+  walletBalance: number
   recentOrders: RecentOrder[]
+  ordersByStatus: Record<string, number>
 }
 
 export function useDashboardStats() {

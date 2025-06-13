@@ -16,6 +16,9 @@ export function formatCurrency(amount: number): string {
 
 export function formatDate(dateString: string) {
   const date = new Date(dateString)
+  if (isNaN(date.getTime())) {
+    return { date: "Invalid Date", time: "" }
+  }
   return {
     date: new Intl.DateTimeFormat("en-NG", {
       day: "numeric",
@@ -31,6 +34,9 @@ export function formatDate(dateString: string) {
 
 export function formatDateTime(dateString: string): string {
   const date = new Date(dateString)
+  if (isNaN(date.getTime())) {
+    return "Invalid Date"
+  }
   return new Intl.DateTimeFormat("en-NG", {
     day: "numeric",
     month: "short",
