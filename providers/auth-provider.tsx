@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setVendor(null);
           // router.push("/auth/login");
-          router.push("/auth/login?message=initializeAuth");
+          router.push("/auth/login");
         }
       } catch (error) {
         console.error("Auth initialization error:", error);

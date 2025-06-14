@@ -16,6 +16,7 @@ import { useProducts } from "@/hooks/useProducts";
 import { useBusiness } from "@/hooks/useBusiness";
 import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 import { ProductSkeleton } from "@/components/skeletons/ProductSkeleton";
+import Footer from "@/components/footer";
 
 export default function ProductsPage() {
   const { business } = useBusiness();
@@ -95,11 +96,11 @@ export default function ProductsPage() {
     : "";
 
   if (!business) {
-    return <ProductSkeleton />;
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="flex items-center justify-between p-4">
@@ -146,7 +147,7 @@ export default function ProductsPage() {
         </div>
       </header>
 
-      <main className="p-4 space-y-6">
+      <main className="p-4 space-y-6 mb-20">
         {/* Error State */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -186,16 +187,6 @@ export default function ProductsPage() {
 
           {/* Filter Chips */}
           <div className="flex items-center space-x-2 overflow-x-auto pb-2">
-            {/* <button
-              onClick={() => setSelectedCategory("all")}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                selectedCategory === "all"
-                  ? "bg-orange-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              All Products ({products.length})
-            </button> */}
             <button
               onClick={() => setSelectedCategory("available")}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
@@ -466,6 +457,7 @@ export default function ProductsPage() {
         )}
       </main>
 
+      <Footer />
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         isOpen={deleteModalOpen}

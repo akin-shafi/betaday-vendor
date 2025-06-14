@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   ArrowLeft,
   User,
@@ -14,113 +14,132 @@ import {
   Clock,
   CreditCard,
   RefreshCw,
-} from "lucide-react"
-import { useAuth } from "@/providers/auth-provider"
-import { getSessionUser } from "@/lib/session"
-import { useBusiness } from "@/hooks/useBusiness"
+} from "lucide-react";
+import { useAuth } from "@/providers/auth-provider";
+import { getSessionUser } from "@/lib/session";
+import { useBusiness } from "@/hooks/useBusiness";
+import Footer from "@/components/footer";
 
 // Define interface for formData to ensure type safety
 interface FormData {
-  fullName: string
-  email: string
-  phoneNumber: string
-  dateOfBirth: string
-  bank_name: string
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  dateOfBirth: string;
+  bank_name: string;
 }
 
 // Add this helper function before the ProfilePage component
 function ensureArray(value: string | string[] | undefined): string[] {
-  if (!value) return []
-  if (Array.isArray(value)) return value
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
   try {
     // Try to parse it as JSON if it's a string representation of an array
-    const parsed = JSON.parse(value)
-    return Array.isArray(parsed) ? parsed : [value]
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [value];
   } catch (e) {
     // If it can't be parsed as JSON, treat it as a single string
-    return [value]
+    return [value];
   }
 }
 
 export default function ProfilePage() {
-  const { vendor, updateProfile, isLoading: authLoading, refreshVendor } = useAuth()
-  const { business, isLoading: businessLoading, error: businessError, refetch: refetchBusiness } = useBusiness()
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const {
+    vendor,
+    updateProfile,
+    isLoading: authLoading,
+    refreshVendor,
+  } = useAuth();
+  const {
+    business,
+    isLoading: businessLoading,
+    error: businessError,
+    refetch: refetchBusiness,
+  } = useBusiness();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     email: "",
     phoneNumber: "",
     dateOfBirth: "",
     bank_name: "",
-  })
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  });
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Refresh both user and business data
   const refreshAllData = async () => {
-    setIsRefreshing(true)
+    setIsRefreshing(true);
     try {
-      await Promise.all([refreshVendor(), refetchBusiness()])
+      await Promise.all([refreshVendor(), refetchBusiness()]);
     } catch (error) {
-      console.error("Failed to refresh data:", error)
-      setErrors({ general: "Failed to refresh data. Please try again." })
+      console.error("Failed to refresh data:", error);
+      setErrors({ general: "Failed to refresh data. Please try again." });
     } finally {
-      setIsRefreshing(false)
+      setIsRefreshing(false);
     }
-  }
+  };
 
   // Update form data when vendor changes
   useEffect(() => {
-    const sessionUser = getSessionUser()
-    const user = sessionUser || vendor
+    const sessionUser = getSessionUser();
+    const user = sessionUser || vendor;
 
     if (user) {
       setFormData({
         fullName: user.fullName || "",
         email: user.email || "",
         phoneNumber: user.phoneNumber || "",
-        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split("T")[0] : "",
+        dateOfBirth: user.dateOfBirth
+          ? new Date(user.dateOfBirth).toISOString().split("T")[0]
+          : "",
         bank_name: user.bank_name || "",
-      })
+      });
     }
-  }, [vendor])
+  }, [vendor]);
 
   // Validate form
   const validateForm = () => {
-    const newErrors: Record<string, string> = {}
+    const newErrors: Record<string, string> = {};
 
     if (!formData.fullName.trim()) {
-      newErrors.fullName = "Full name is required"
+      newErrors.fullName = "Full name is required";
     }
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format"
+      newErrors.email = "Invalid email format";
     }
-    if (formData.phoneNumber && !/^\+?[1-9]\d{1,14}$/.test(formData.phoneNumber.replace(/\s/g, ""))) {
-      newErrors.phoneNumber = "Invalid phone number"
+    if (
+      formData.phoneNumber &&
+      !/^\+?[1-9]\d{1,14}$/.test(formData.phoneNumber.replace(/\s/g, ""))
+    ) {
+      newErrors.phoneNumber = "Invalid phone number";
     }
-    if (formData.dateOfBirth && isNaN(new Date(formData.dateOfBirth).getTime())) {
-      newErrors.dateOfBirth = "Invalid date of birth"
+    if (
+      formData.dateOfBirth &&
+      isNaN(new Date(formData.dateOfBirth).getTime())
+    ) {
+      newErrors.dateOfBirth = "Invalid date of birth";
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }))
+      setErrors((prev) => ({ ...prev, [field]: "" }));
     }
-  }
+  };
 
   const handleSave = async () => {
     if (!validateForm()) {
-      return
+      return;
     }
 
-    setIsSaving(true)
-    setErrors({})
+    setIsSaving(true);
+    setErrors({});
 
     try {
       // Prepare payload (exclude read-only fields)
@@ -130,37 +149,40 @@ export default function ProfilePage() {
         phoneNumber: formData.phoneNumber,
         dateOfBirth: formData.dateOfBirth || undefined,
         bank_name: formData.bank_name || undefined,
-      }
+      };
 
-      await updateProfile(payload)
-      setIsEditing(false)
+      await updateProfile(payload);
+      setIsEditing(false);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to update profile"
-      setErrors({ general: errorMessage })
-      console.error("Failed to update profile:", error)
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update profile";
+      setErrors({ general: errorMessage });
+      console.error("Failed to update profile:", error);
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleCancel = () => {
-    setIsEditing(false)
-    setErrors({})
+    setIsEditing(false);
+    setErrors({});
 
     // Reset form data from current session/vendor data
-    const sessionUser = getSessionUser()
-    const user = sessionUser || vendor
+    const sessionUser = getSessionUser();
+    const user = sessionUser || vendor;
 
     if (user) {
       setFormData({
         fullName: user.fullName || "",
         email: user.email || "",
         phoneNumber: user.phoneNumber || "",
-        dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split("T")[0] : "",
+        dateOfBirth: user.dateOfBirth
+          ? new Date(user.dateOfBirth).toISOString().split("T")[0]
+          : "",
         bank_name: user.bank_name || "",
-      })
+      });
     }
-  }
+  };
 
   if (authLoading) {
     return (
@@ -170,11 +192,11 @@ export default function ProfilePage() {
           <p className="mt-4 text-gray-600">Loading profile...</p>
         </div>
       </div>
-    )
+    );
   }
 
   // Use session utility to get current user
-  const currentUser = vendor || getSessionUser()
+  const currentUser = vendor || getSessionUser();
 
   if (!currentUser) {
     return (
@@ -189,7 +211,7 @@ export default function ProfilePage() {
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -214,7 +236,9 @@ export default function ProfilePage() {
               disabled={isRefreshing}
               className="text-gray-600 font-medium p-2 hover:bg-gray-100 rounded-lg flex items-center gap-2"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+              />
               {isRefreshing ? "Refreshing..." : "Refresh"}
             </button>
             <button
@@ -238,7 +262,9 @@ export default function ProfilePage() {
         {/* Business Error */}
         {businessError && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-yellow-700 text-sm">Business data: {businessError}</p>
+            <p className="text-yellow-700 text-sm">
+              Business data: {businessError}
+            </p>
           </div>
         )}
 
@@ -268,34 +294,50 @@ export default function ProfilePage() {
                 </button>
               )}
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mt-4">{formData.fullName || "Vendor Name"}</h2>
+            <h2 className="text-xl font-bold text-gray-900 mt-4">
+              {formData.fullName || "Vendor Name"}
+            </h2>
             <p className="text-gray-600">{business?.name || "Business Name"}</p>
-            {businessLoading && <p className="text-sm text-gray-500">Loading business info...</p>}
+            {businessLoading && (
+              <p className="text-sm text-gray-500">Loading business info...</p>
+            )}
           </div>
         </div>
 
         {/* Personal Information */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Personal Information
+          </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name
+              </label>
               {isEditing ? (
                 <input
                   type="text"
                   value={formData.fullName}
-                  onChange={(e) => handleInputChange("fullName", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("fullName", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600"
                   placeholder="Enter full name"
                 />
               ) : (
-                <p className="text-gray-900">{formData.fullName || "Not provided"}</p>
+                <p className="text-gray-900">
+                  {formData.fullName || "Not provided"}
+                </p>
               )}
-              {errors.fullName && <p className="text-red-600 text-sm mt-1">{errors.fullName}</p>}
+              {errors.fullName && (
+                <p className="text-red-600 text-sm mt-1">{errors.fullName}</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
               <div className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-gray-400" />
                 {isEditing ? (
@@ -307,61 +349,91 @@ export default function ProfilePage() {
                     placeholder="Enter email"
                   />
                 ) : (
-                  <p className="text-gray-900">{formData.email || "Not provided"}</p>
+                  <p className="text-gray-900">
+                    {formData.email || "Not provided"}
+                  </p>
                 )}
               </div>
-              {errors.email && <p className="text-red-600 text-sm mt-1">{errors.email}</p>}
+              {errors.email && (
+                <p className="text-red-600 text-sm mt-1">{errors.email}</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Phone
+              </label>
               <div className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-gray-400" />
                 {isEditing ? (
                   <input
                     type="tel"
                     value={formData.phoneNumber}
-                    onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("phoneNumber", e.target.value)
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600"
                     placeholder="Enter phone number"
                   />
                 ) : (
-                  <p className="text-gray-900">{formData.phoneNumber || "Not provided"}</p>
+                  <p className="text-gray-900">
+                    {formData.phoneNumber || "Not provided"}
+                  </p>
                 )}
               </div>
-              {errors.phoneNumber && <p className="text-red-600 text-sm mt-1">{errors.phoneNumber}</p>}
+              {errors.phoneNumber && (
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.phoneNumber}
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Date of Birth
+              </label>
               {isEditing ? (
                 <input
                   type="date"
                   value={formData.dateOfBirth}
-                  onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("dateOfBirth", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600"
                   placeholder="Select date"
                 />
               ) : (
                 <p className="text-gray-900">
-                  {formData.dateOfBirth ? new Date(formData.dateOfBirth).toLocaleDateString() : "Not provided"}
+                  {formData.dateOfBirth
+                    ? new Date(formData.dateOfBirth).toLocaleDateString()
+                    : "Not provided"}
                 </p>
               )}
-              {errors.dateOfBirth && <p className="text-red-600 text-sm mt-1">{errors.dateOfBirth}</p>}
+              {errors.dateOfBirth && (
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.dateOfBirth}
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bank Name
+              </label>
               {isEditing ? (
                 <input
                   type="text"
                   value={formData.bank_name}
-                  onChange={(e) => handleInputChange("bank_name", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("bank_name", e.target.value)
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600"
                   placeholder="Enter bank name"
                 />
               ) : (
-                <p className="text-gray-900">{formData.bank_name || "Not provided"}</p>
+                <p className="text-gray-900">
+                  {formData.bank_name || "Not provided"}
+                </p>
               )}
             </div>
           </div>
@@ -370,7 +442,9 @@ export default function ProfilePage() {
         {/* Business Information */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Business Information</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Business Information
+            </h3>
             <div className="flex items-center gap-3">
               {businessLoading && (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-600"></div>
@@ -402,14 +476,22 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-xl font-bold text-gray-900 truncate">{business.name}</h4>
-                  <p className="text-sm text-gray-600 mb-2">{business.businessType}</p>
+                  <h4 className="text-xl font-bold text-gray-900 truncate">
+                    {business.name}
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-2">
+                    {business.businessType}
+                  </p>
                   <div className="flex items-center space-x-4 text-sm">
                     <div className="flex items-center space-x-1">
                       <div
-                        className={`w-2 h-2 rounded-full ${business.isActive ? "bg-green-500" : "bg-red-500"}`}
+                        className={`w-2 h-2 rounded-full ${
+                          business.isActive ? "bg-green-500" : "bg-red-500"
+                        }`}
                       ></div>
-                      <span className="text-gray-600">{business.isActive ? "Active" : "Inactive"}</span>
+                      <span className="text-gray-600">
+                        {business.isActive ? "Active" : "Inactive"}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <span className="text-yellow-500">★</span>
@@ -424,8 +506,12 @@ export default function ProfilePage() {
               {/* Business Description */}
               {business.description && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">About</label>
-                  <p className="text-gray-900 text-sm leading-relaxed">{business.description}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    About
+                  </label>
+                  <p className="text-gray-900 text-sm leading-relaxed">
+                    {business.description}
+                  </p>
                 </div>
               )}
 
@@ -433,21 +519,31 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Contact Information */}
                 <div className="space-y-4">
-                  <h5 className="font-medium text-gray-900 border-b pb-2">Contact Information</h5>
+                  <h5 className="font-medium text-gray-900 border-b pb-2">
+                    Contact Information
+                  </h5>
 
                   <div className="flex items-center space-x-3">
                     <Phone className="w-5 h-5 text-gray-400 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Business Phone</p>
-                      <p className="text-gray-900">{business.contactNumber || "Not provided"}</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        Business Phone
+                      </p>
+                      <p className="text-gray-900">
+                        {business.contactNumber || "Not provided"}
+                      </p>
                     </div>
                   </div>
 
                   {business.website && (
                     <div className="flex items-center space-x-3">
-                      <div className="w-5 h-5 text-gray-400 flex-shrink-0 flex items-center justify-center">🌐</div>
+                      <div className="w-5 h-5 text-gray-400 flex-shrink-0 flex items-center justify-center">
+                        🌐
+                      </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Website</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Website
+                        </p>
                         <a
                           href={business.website}
                           target="_blank"
@@ -463,23 +559,31 @@ export default function ProfilePage() {
 
                 {/* Location Information */}
                 <div className="space-y-4">
-                  <h5 className="font-medium text-gray-900 border-b pb-2">Location</h5>
+                  <h5 className="font-medium text-gray-900 border-b pb-2">
+                    Location
+                  </h5>
 
                   <div className="flex items-start space-x-3">
                     <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Address</p>
-                      <p className="text-gray-900">{business.address || "Not provided"}</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        Address
+                      </p>
+                      <p className="text-gray-900">
+                        {business.address || "Not provided"}
+                      </p>
                       <p className="text-sm text-gray-600">
                         {business.city}, {business.state}
-                        {business.localGovernment && ` • ${business.localGovernment}`}
+                        {business.localGovernment &&
+                          ` • ${business.localGovernment}`}
                       </p>
                     </div>
                   </div>
 
                   {business.latitude && business.longitude && (
                     <div className="text-xs text-gray-500">
-                      Coordinates: {Number(business.latitude).toFixed(4)}, {Number(business.longitude).toFixed(4)}
+                      Coordinates: {Number(business.latitude).toFixed(4)},{" "}
+                      {Number(business.longitude).toFixed(4)}
                     </div>
                   )}
                 </div>
@@ -489,87 +593,135 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Operating Hours */}
                 <div className="space-y-4">
-                  <h5 className="font-medium text-gray-900 border-b pb-2">Operating Hours</h5>
+                  <h5 className="font-medium text-gray-900 border-b pb-2">
+                    Operating Hours
+                  </h5>
 
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-gray-400 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Business Hours</p>
+                      <p className="text-sm font-medium text-gray-700">
+                        Business Hours
+                      </p>
                       <p className="text-gray-900">
                         {business.openingTime && business.closingTime
-                          ? `${business.openingTime.substring(0, 5)} - ${business.closingTime.substring(0, 5)}`
+                          ? `${business.openingTime.substring(
+                              0,
+                              5
+                            )} - ${business.closingTime.substring(0, 5)}`
                           : "Not specified"}
                       </p>
-                      <p className="text-sm text-gray-600">{business.businessDays || "Not specified"}</p>
+                      <p className="text-sm text-gray-600">
+                        {business.businessDays || "Not specified"}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Service Information */}
                 <div className="space-y-4">
-                  <h5 className="font-medium text-gray-900 border-b pb-2">Service Details</h5>
+                  <h5 className="font-medium text-gray-900 border-b pb-2">
+                    Service Details
+                  </h5>
 
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Delivery Options</p>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Delivery Options
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {business.deliveryOptions ? (
-                        ensureArray(business.deliveryOptions).map((option, index) => (
-                          <span key={index} className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
-                            {option}
-                          </span>
-                        ))
+                        ensureArray(business.deliveryOptions).map(
+                          (option, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full"
+                            >
+                              {option}
+                            </span>
+                          )
+                        )
                       ) : (
-                        <span className="text-gray-500 text-sm">Not specified</span>
+                        <span className="text-gray-500 text-sm">
+                          Not specified
+                        </span>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Price Range</p>
-                    <p className="text-gray-900">{business.priceRange || "Not specified"}</p>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Price Range
+                    </p>
+                    <p className="text-gray-900">
+                      {business.priceRange || "Not specified"}
+                    </p>
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Delivery Time</p>
-                    <p className="text-gray-900">{business.deliveryTimeRange || "Not specified"}</p>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Delivery Time
+                    </p>
+                    <p className="text-gray-900">
+                      {business.deliveryTimeRange || "Not specified"}
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* Product Categories */}
-              {business.productCategories && business.productCategories.length > 0 && (
-                <div>
-                  <h5 className="font-medium text-gray-900 border-b pb-2 mb-3">Product Categories</h5>
-                  <div className="flex flex-wrap gap-2">
-                    {business.productCategories.map((category, index) => (
-                      <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                        {category}
-                      </span>
-                    ))}
+              {business.productCategories &&
+                business.productCategories.length > 0 && (
+                  <div>
+                    <h5 className="font-medium text-gray-900 border-b pb-2 mb-3">
+                      Product Categories
+                    </h5>
+                    <div className="flex flex-wrap gap-2">
+                      {business.productCategories.map((category, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                        >
+                          {category}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Payment Information */}
               <div>
-                <h5 className="font-medium text-gray-900 border-b pb-2 mb-4">Payment Information</h5>
+                <h5 className="font-medium text-gray-900 border-b pb-2 mb-4">
+                  Payment Information
+                </h5>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-start space-x-3">
                     <CreditCard className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                          <p className="text-sm font-medium text-gray-700">Bank Name</p>
-                          <p className="text-gray-900">{business.bankName || "Not provided"}</p>
+                          <p className="text-sm font-medium text-gray-700">
+                            Bank Name
+                          </p>
+                          <p className="text-gray-900">
+                            {business.bankName || "Not provided"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-700">Account Name</p>
-                          <p className="text-gray-900">{business.accountName || "Not provided"}</p>
+                          <p className="text-sm font-medium text-gray-700">
+                            Account Name
+                          </p>
+                          <p className="text-gray-900">
+                            {business.accountName || "Not provided"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-700">Account Number</p>
+                          <p className="text-sm font-medium text-gray-700">
+                            Account Number
+                          </p>
                           <p className="text-gray-900 font-mono">
-                            {business.accountNumber ? `****${business.accountNumber.slice(-4)}` : "Not provided"}
+                            {business.accountNumber
+                              ? `****${business.accountNumber.slice(-4)}`
+                              : "Not provided"}
                           </p>
                         </div>
                       </div>
@@ -580,22 +732,32 @@ export default function ProfilePage() {
 
               {/* Business Metrics */}
               <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4">
-                <h5 className="font-medium text-gray-900 mb-3">Business Metrics</h5>
+                <h5 className="font-medium text-gray-900 mb-3">
+                  Business Metrics
+                </h5>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-orange-600">{business.rating}</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {business.rating}
+                    </p>
                     <p className="text-sm text-gray-600">Rating</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-orange-600">{business.ratingCount}</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {business.ratingCount}
+                    </p>
                     <p className="text-sm text-gray-600">Reviews</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-orange-600">{business.productCategories?.length || 0}</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {business.productCategories?.length || 0}
+                    </p>
                     <p className="text-sm text-gray-600">Categories</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-orange-600">{ensureArray(business.deliveryOptions).length}</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {ensureArray(business.deliveryOptions).length}
+                    </p>
                     <p className="text-sm text-gray-600">Delivery Options</p>
                   </div>
                 </div>
@@ -616,8 +778,12 @@ export default function ProfilePage() {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Building className="w-8 h-8 text-gray-400" />
               </div>
-              <h4 className="text-lg font-medium text-gray-900 mb-2">No Business Found</h4>
-              <p className="text-gray-600 mb-6">You haven't set up your business profile yet.</p>
+              <h4 className="text-lg font-medium text-gray-900 mb-2">
+                No Business Found
+              </h4>
+              <p className="text-gray-600 mb-6">
+                You haven't set up your business profile yet.
+              </p>
               <Link
                 href="/onboarding/business"
                 className="inline-flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors"
@@ -647,6 +813,7 @@ export default function ProfilePage() {
           </button>
         )}
       </main>
+      <Footer />
     </div>
-  )
+  );
 }

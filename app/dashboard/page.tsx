@@ -25,11 +25,11 @@ import { useAuth } from "@/providers/auth-provider";
 import { ProtectedRoute } from "@/components/protected-route";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
+import Footer from "@/components/footer";
 
 function DashboardContent() {
   const { vendor, logout } = useAuth();
   const { stats, isLoading, error, refetch } = useDashboardStats();
-  const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [expandedOrderIndex, setExpandedOrderIndex] = useState<number | null>(
     null
@@ -42,19 +42,6 @@ function DashboardContent() {
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [tempStartDate, setTempStartDate] = useState<string>("");
   const [tempEndDate, setTempEndDate] = useState<string>("");
-
-  useEffect(() => {
-    // Check onboarding status
-    const onboardingComplete = localStorage.getItem(
-      "vendor_onboarding_complete"
-    );
-    setIsOnboardingComplete(onboardingComplete === "true");
-  }, []);
-
-  const completeOnboarding = () => {
-    localStorage.setItem("vendor_onboarding_complete", "true");
-    setIsOnboardingComplete(true);
-  };
 
   const toggleOrderDetails = (index: number) => {
     setExpandedOrderIndex(expandedOrderIndex === index ? null : index);
@@ -114,6 +101,34 @@ function DashboardContent() {
     deliveredOrders: stats?.ordersByStatus?.delivered || 0,
     walletBalance: stats?.walletBalance || 0,
   };
+
+  // Determine onboarding message and action based on onboardingStep
+  const getOnboardingInfo = () => {
+    if (!vendor || vendor.onboardingStep >= 3) {
+      return null;
+    }
+
+    switch (vendor.onboardingStep) {
+      case 1:
+        return {
+          title: "Register Your Business",
+          message: "Set up your business details to start selling on BetaDay.",
+          actionText: "Register Business",
+          actionLink: "/onboarding/business",
+        };
+      case 2:
+        return {
+          title: "Add Your First Product",
+          message: "Create your product catalogue to start receiving orders.",
+          actionText: "Add Product",
+          actionLink: "/products/create",
+        };
+      default:
+        return null;
+    }
+  };
+
+  const onboardingInfo = getOnboardingInfo();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -206,31 +221,24 @@ function DashboardContent() {
       </header>
 
       <main className="p-4 space-y-6 mb-20">
-        {!isOnboardingComplete && (
+        {onboardingInfo && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
               <div className="flex-1">
                 <h3 className="font-medium text-orange-900">
-                  Complete Your Setup
+                  {onboardingInfo.title}
                 </h3>
                 <p className="text-sm text-orange-700 mt-1">
-                  Create your product catalogue to start receiving orders from
-                  customers.
+                  {onboardingInfo.message}
                 </p>
-                <div className="mt-3 flex space-x-3">
+                <div className="mt-3">
                   <Link
-                    href="/products/create"
+                    href={onboardingInfo.actionLink}
                     className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700"
                   >
-                    Add Products
+                    {onboardingInfo.actionText}
                   </Link>
-                  <button
-                    onClick={completeOnboarding}
-                    className="text-orange-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-100"
-                  >
-                    Skip for now
-                  </button>
                 </div>
               </div>
             </div>
@@ -538,45 +546,7 @@ function DashboardContent() {
         </div>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-        <div className="flex items-center justify-around">
-          <Link
-            href="/dashboard"
-            className="flex flex-col items-center py-2 text-orange-600"
-          >
-            <TrendingUp className="w-5 h-5" />
-            <span className="text-xs mt-1">Dashboard</span>
-          </Link>
-          <Link
-            href="/products"
-            className="flex flex-col items-center py-2 text-gray-600"
-          >
-            <Package className="w-5 h-5" />
-            <span className="text-xs mt-1">Products</span>
-          </Link>
-          <Link
-            href="/orders"
-            className="flex flex-col items-center py-2 text-gray-600"
-          >
-            <ShoppingBag className="w-5 h-5" />
-            <span className="text-xs mt-1">Orders</span>
-          </Link>
-          <Link
-            href="/wallet"
-            className="flex flex-col items-center py-2 text-gray-600"
-          >
-            <Wallet className="w-5 h-5" />
-            <span className="text-xs mt-1">Wallet</span>
-          </Link>
-          <Link
-            href="/profile"
-            className="flex flex-col items-center py-2 text-gray-600"
-          >
-            <User className="w-5 h-5" />
-            <span className="text-xs mt-1">Profile</span>
-          </Link>
-        </div>
-      </nav>
+      <Footer />
     </div>
   );
 }
