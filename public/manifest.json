@@ -2,7 +2,7 @@
   "name": "BetaDay Vendor",
   "short_name": "Vendor",
   "description": "Manage your vendor business with ease",
-  "start_url": "/dashboard",
+  "start_url": "/auth/login",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#f97316",
