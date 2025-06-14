@@ -38,7 +38,7 @@ function DashboardContent() {
     period: "day" | "week" | "month" | "year" | null;
     startDate?: string;
     endDate?: string;
-  }>({ period: "month" });
+  }>({ period: "week" });
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
   const [tempStartDate, setTempStartDate] = useState<string>("");
   const [tempEndDate, setTempEndDate] = useState<string>("");
