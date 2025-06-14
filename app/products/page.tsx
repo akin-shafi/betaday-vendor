@@ -112,7 +112,7 @@ export default function ProductsPage() {
             </Link>
             <div>
               <h1 className="text-lg font-bold text-gray-900">Products</h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 truncate-text">
                 {products.length} product{products.length !== 1 ? "s" : ""} •{" "}
                 {business.name}
               </p>

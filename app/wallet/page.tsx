@@ -22,10 +22,10 @@ export default function WalletPage() {
 
   // Mock data
   const walletData = {
-    balance: 45230.75,
-    pendingBalance: 2150.0,
-    totalEarnings: 125430.5,
-    totalWithdrawals: 80199.75,
+    balance: 450230.75,
+    pendingBalance: 21050.0,
+    totalEarnings: 1254300.5,
+    totalWithdrawals: 800199.75,
   };
 
   const transactions = [
@@ -181,27 +181,29 @@ export default function WalletPage() {
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="flex border-b border-gray-200">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`flex-1 py-3 px-4 text-sm font-medium ${
-                activeTab === "overview"
-                  ? "text-orange-600 border-b-2 border-orange-600"
-                  : "text-gray-500"
-              }`}
-            >
-              Transactions
-            </button>
-            <button
-              onClick={() => setActiveTab("withdrawals")}
-              className={`flex-1 py-3 px-4 text-sm font-medium ${
-                activeTab === "withdrawals"
-                  ? "text-orange-600 border-b-2 border-orange-600"
-                  : "text-gray-500"
-              }`}
-            >
-              Withdrawals
-            </button>
+          <div className="overflow-x-auto">
+            <div className="flex min-w-max border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab("overview")}
+                className={`whitespace-nowrap flex-1 sm:flex-grow py-3 px-4 text-sm font-medium ${
+                  activeTab === "overview"
+                    ? "text-orange-600 border-b-2 border-orange-600"
+                    : "text-gray-500"
+                }`}
+              >
+                Transactions
+              </button>
+              <button
+                onClick={() => setActiveTab("withdrawals")}
+                className={`whitespace-nowrap flex-1 sm:flex-grow py-3 px-4 text-sm font-medium ${
+                  activeTab === "withdrawals"
+                    ? "text-orange-600 border-b-2 border-orange-600"
+                    : "text-gray-500"
+                }`}
+              >
+                Withdrawals
+              </button>
+            </div>
           </div>
 
           <div className="p-4">

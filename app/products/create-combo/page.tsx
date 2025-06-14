@@ -295,7 +295,7 @@ export default function CreateComboPage() {
 
           {/* Product Selection */}
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
               <div className="flex items-center space-x-2">
                 <Package className="w-5 h-5 text-orange-600" />
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -304,7 +304,7 @@ export default function CreateComboPage() {
               </div>
               <button
                 onClick={() => setShowProductSelector(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                className="flex items-center justify-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Product</span>
