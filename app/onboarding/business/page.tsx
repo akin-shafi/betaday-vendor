@@ -17,6 +17,16 @@ import {
 import { useAddressAutocomplete } from "@/hooks/useAddressAutocomplete";
 import { useDescriptionSuggestion } from "@/hooks/useDescriptionSuggestion";
 import { Vendor } from "@/types/vendor";
+import { Select } from "antd";
+import type { SelectProps } from "antd";
+
+const { Option } = Select;
+
+interface Bank {
+  name: string;
+  code: string;
+  slug: string;
+}
 
 interface BusinessData {
   name: string;
@@ -36,6 +46,7 @@ interface BusinessData {
   deliveryOptions: string[];
   accountNumber: string;
   bankName: string;
+  bankCode: string;
   accountName: string;
 }
 
@@ -47,6 +58,9 @@ export default function BusinessOnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [businessTypes, setBusinessTypes] = useState<string[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [isFetchingBanks, setIsFetchingBanks] = useState(false);
+  const [isResolvingAccount, setIsResolvingAccount] = useState(false);
   const addressInputRef = useRef<HTMLInputElement>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
@@ -71,6 +85,7 @@ export default function BusinessOnboardingPage() {
     deliveryOptions: ["In-house"],
     accountNumber: "",
     bankName: "",
+    bankCode: "",
     accountName: "",
   });
 
@@ -127,6 +142,81 @@ export default function BusinessOnboardingPage() {
     fetchBusinessTypes();
   }, []);
 
+  // Fetch banks
+  useEffect(() => {
+    const fetchBanks = async () => {
+      setIsFetchingBanks(true);
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/banks`,
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch banks");
+        }
+
+        const data = await response.json();
+        setBanks(data.data);
+      } catch (error) {
+        setErrors((prev) => ({
+          ...prev,
+          bankName: "Failed to load banks. Please try again.",
+        }));
+      } finally {
+        setIsFetchingBanks(false);
+      }
+    };
+
+    fetchBanks();
+  }, []);
+
+  // Handle account resolution on blur
+  const handleResolveAccount = async () => {
+    if (
+      businessData.accountNumber.length !== 10 ||
+      !businessData.bankCode ||
+      isResolvingAccount
+    ) {
+      return;
+    }
+
+    setIsResolvingAccount(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/banks/resolve-account?account_number=${businessData.accountNumber}&bank_code=${businessData.bankCode}`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to resolve account");
+      }
+
+      const data = await response.json();
+      setBusinessData((prev) => ({
+        ...prev,
+        accountName: data.data.account_name,
+      }));
+      setErrors((prev) => ({ ...prev, accountNumber: "" }));
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        accountNumber: "Invalid account number or bank code",
+      }));
+      setBusinessData((prev) => ({ ...prev, accountName: "" }));
+    } finally {
+      setIsResolvingAccount(false);
+    }
+  };
+
   // Sync address input
   useEffect(() => {
     if (businessData.address !== addressInput) {
@@ -167,7 +257,10 @@ export default function BusinessOnboardingPage() {
     >
   ) => {
     const { name, value } = e.target;
-    setBusinessData((prev) => ({ ...prev, [name]: value }));
+    setBusinessData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
     if (name === "address") {
       setAddressInput(value);
       setShowSuggestions(value.trim().length > 0);
@@ -175,6 +268,20 @@ export default function BusinessOnboardingPage() {
     }
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  // Handle bank selection
+  const handleBankChange = (value: string) => {
+    const selectedBank = banks.find((bank) => bank.name === value);
+    setBusinessData((prev) => ({
+      ...prev,
+      bankName: value,
+      bankCode: selectedBank ? selectedBank.code : "",
+      accountName: "", // Reset account name when bank changes
+    }));
+    if (errors.bankName) {
+      setErrors((prev) => ({ ...prev, bankName: "" }));
     }
   };
 
@@ -284,13 +391,25 @@ export default function BusinessOnboardingPage() {
       newErrors.address =
         "Please select a valid address from the dropdown to set coordinates";
     }
+    // Optional bank details validation
+    if (
+      businessData.accountNumber &&
+      businessData.accountNumber.length !== 10
+    ) {
+      newErrors.accountNumber = "Account number must be 10 digits";
+    }
+    if (businessData.accountNumber && !businessData.bankCode) {
+      newErrors.bankName = "Please select a bank";
+    }
+    if (businessData.accountNumber && !businessData.accountName) {
+      newErrors.accountNumber = "Please resolve account name";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission (aligned with AddBusinessModal)
-  // Inside BusinessOnboardingPage component
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -315,11 +434,10 @@ export default function BusinessOnboardingPage() {
       businessDays: businessData.businessDays || undefined,
       accountNumber: businessData.accountNumber || undefined,
       bankName: businessData.bankName || undefined,
+      bankCode: businessData.bankCode || undefined,
       accountName: businessData.accountName || undefined,
       isActive: true,
     };
-
-    console.log("Submitting Payload:", payload);
 
     try {
       const session = getSession();
@@ -351,9 +469,9 @@ export default function BusinessOnboardingPage() {
       const updateResponse = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"
-        }/auth/users/${vendor.id}`, // Use userId from vendor
+        }/auth/users/${vendor.id}`,
         {
-          method: "PUT", // Change to PUT
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.token}`,
@@ -373,7 +491,7 @@ export default function BusinessOnboardingPage() {
       }
 
       const updatedVendor: Vendor = await updateResponse.json();
-      setSession({ ...session, user: updatedVendor.user }); // Adjust based on response structure
+      setSession({ ...session, user: updatedVendor.user });
       router.push("/dashboard");
     } catch (error) {
       const errorMessage =
@@ -397,7 +515,7 @@ export default function BusinessOnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 p-4">
-      <div className="w-full max-w-2xl mx-auto">
+      <div className="w-full max-w-2xl mx-auto mb-24">
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => router.back()}
@@ -837,33 +955,41 @@ export default function BusinessOnboardingPage() {
                   >
                     Bank Name
                   </label>
-                  <input
-                    type="text"
-                    id="bankName"
-                    name="bankName"
-                    value={businessData.bankName}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brandmain focus:border-brandmain transition-colors"
-                    placeholder="Enter bank name"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="accountName"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Account Name
-                  </label>
-                  <input
-                    type="text"
-                    id="accountName"
-                    name="accountName"
-                    value={businessData.accountName}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brandmain focus:border-brandmain transition-colors"
-                    placeholder="Enter account name"
-                  />
+                  <div className="relative">
+                    <Select
+                      id="bankName"
+                      value={businessData.bankName || undefined}
+                      onChange={handleBankChange}
+                      disabled={isFetchingBanks || isLoading}
+                      showSearch
+                      placeholder="Search and select a bank"
+                      optionFilterProp="children"
+                      filterOption={(input, option) =>
+                        (option?.children as unknown as string)
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                      }
+                      className={`w-full ${
+                        errors.bankName ? "border-red-300" : ""
+                      }`}
+                      suffixIcon={
+                        isFetchingBanks ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-brandmain"></div>
+                        ) : null
+                      }
+                    >
+                      {banks.map((bank) => (
+                        <Option key={bank.code} value={bank.name}>
+                          {bank.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </div>
+                  {errors.bankName && (
+                    <p className="text-red-600 text-sm mt-1">
+                      {errors.bankName}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -881,18 +1007,51 @@ export default function BusinessOnboardingPage() {
                       name="accountNumber"
                       value={businessData.accountNumber}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brandmain focus:border-brandmain transition-colors"
-                      placeholder="Enter account number"
+                      onBlur={handleResolveAccount}
+                      className={`w-full px-3 py-3 pl-10 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brandmain focus:border-brandmain transition-colors ${
+                        errors.accountNumber
+                          ? "border-red-600"
+                          : "border-gray-300"
+                      }`}
+                      placeholder="Enter 10-digit account number"
                     />
+                    {isResolvingAccount && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-brandmain"></div>
+                      </div>
+                    )}
                   </div>
+                  {errors.accountNumber && (
+                    <p className="text-red-600 text-sm mt-1">
+                      {errors.accountNumber}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="accountName"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Account Name
+                  </label>
+                  <input
+                    type="text"
+                    id="accountName"
+                    name="accountName"
+                    value={businessData.accountName}
+                    readOnly
+                    className="w-full px-3 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                    placeholder="Account name will appear here"
+                  />
                 </div>
               </div>
             </div>
 
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-brandmain text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={isLoading || isResolvingAccount}
+              className="w-full bg-brandmain text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

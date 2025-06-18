@@ -1,51 +1,73 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "@/providers/auth-provider"
-import { getSession } from "@/lib/session"
-import { ArrowLeft, Building, MapPin, Clock, Phone, CreditCard, Save } from "lucide-react"
-import { useAddressAutocomplete } from "@/hooks/useAddressAutocomplete"
-import { useDescriptionSuggestion } from "@/hooks/useDescriptionSuggestion"
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/providers/auth-provider";
+import { getSession } from "@/lib/session";
+import {
+  ArrowLeft,
+  Building,
+  MapPin,
+  Clock,
+  Phone,
+  CreditCard,
+  Save,
+} from "lucide-react";
+import { useAddressAutocomplete } from "@/hooks/useAddressAutocomplete";
+import { useDescriptionSuggestion } from "@/hooks/useDescriptionSuggestion";
+import { Select } from "antd";
+import type { SelectProps } from "antd";
 
-interface Business {
-  id: string
-  name: string
-  description: string
-  businessType: string
-  contactNumber: string
-  website: string
-  address: string
-  city: string
-  state: string
-  localGovernment: string
-  latitude: number | null
-  longitude: number | null
-  openingTime: string
-  closingTime: string
-  businessDays: string
-  deliveryOptions: string[]
-  accountNumber: string
-  bankName: string
-  accountName: string
+const { Option } = Select;
+
+interface Bank {
+  name: string;
+  code: string;
+  slug: string;
 }
 
-const DELIVERY_OPTIONS = ["In-house", "Pickup", "Delivery"]
+interface Business {
+  id: string;
+  name: string;
+  description: string;
+  businessType: string;
+  contactNumber: string;
+  website: string;
+  address: string;
+  city: string;
+  state: string;
+  localGovernment: string;
+  latitude: number | null;
+  longitude: number | null;
+  openingTime: string;
+  closingTime: string;
+  businessDays: string;
+  deliveryOptions: string[];
+  accountNumber: string;
+  bankName: string;
+  bankCode: string;
+  accountName: string;
+}
+
+const DELIVERY_OPTIONS = ["In-house", "Pickup", "Delivery"];
 
 export default function BusinessSettingsPage() {
-  const router = useRouter()
-  const { vendor } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
-  const [isFetching, setIsFetching] = useState(true)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [businessTypes, setBusinessTypes] = useState<string[]>([])
-  const [successMessage, setSuccessMessage] = useState("")
-  const addressInputRef = useRef<HTMLInputElement>(null)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
-  const [fetchSuggestion, setFetchSuggestion] = useState(false)
-  const [suggestionError, setSuggestionError] = useState<string | null>(null)
+  const router = useRouter();
+  const { vendor } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [businessTypes, setBusinessTypes] = useState<string[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [isFetchingBanks, setIsFetchingBanks] = useState(false);
+  const [isResolvingAccount, setIsResolvingAccount] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [fetchSuggestion, setFetchSuggestion] = useState(false);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
 
   const [businessData, setBusinessData] = useState<Business>({
     id: "",
@@ -66,8 +88,9 @@ export default function BusinessSettingsPage() {
     deliveryOptions: ["In-house"],
     accountNumber: "",
     bankName: "",
+    bankCode: "",
     accountName: "",
-  })
+  });
 
   const {
     input: addressInput,
@@ -76,165 +99,266 @@ export default function BusinessSettingsPage() {
     loading: addressLoading,
     debouncing,
     error: addressError,
-  } = useAddressAutocomplete()
+  } = useAddressAutocomplete();
 
-  const { suggestedDescription, isLoading: suggestionLoading } = useDescriptionSuggestion({
-    businessType: businessData.businessType,
-    businessName: businessData.name,
-  })
+  const { suggestedDescription, isLoading: suggestionLoading } =
+    useDescriptionSuggestion({
+      businessType: businessData.businessType,
+      businessName: businessData.name,
+    });
 
   // Fetch business data
   useEffect(() => {
     const fetchBusinessData = async () => {
       try {
-        setIsFetching(true)
-        const session = getSession()
+        setIsFetching(true);
+        const session = getSession();
         if (!session?.token || !vendor?.id) {
-          throw new Error("Authentication required")
+          throw new Error("Authentication required");
         }
 
-        // Use the correct API endpoint: /businesses/user/{userId}
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "https://betapadi.onrender.com"}/businesses/user/${vendor.id}`,
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "https://betapadi.onrender.com"
+          }/businesses/user/${vendor.id}`,
           {
             headers: {
               Authorization: `Bearer ${session.token}`,
               "Content-Type": "application/json",
             },
-          },
-        )
+          }
+        );
 
         if (!response.ok) {
           if (response.status === 404) {
-            throw new Error("No business found for this user")
+            throw new Error("No business found for this user");
           }
-          throw new Error(`Failed to fetch business data: ${response.status}`)
+          throw new Error(`Failed to fetch business data: ${response.status}`);
         }
 
-        const data = await response.json()
+        const data = await response.json();
 
-        // Check if businesses array exists and has data
-        if (!data.businesses || !Array.isArray(data.businesses) || data.businesses.length === 0) {
-          throw new Error("No business found for this user")
+        if (
+          !data.businesses ||
+          !Array.isArray(data.businesses) ||
+          data.businesses.length === 0
+        ) {
+          throw new Error("No business found for this user");
         }
 
-        // Get the first business from the array
-        const businessInfo = data.businesses[0]
+        const businessInfo = data.businesses[0];
 
         if (!businessInfo || !businessInfo.id) {
-          throw new Error("Invalid business data received")
+          throw new Error("Invalid business data received");
         }
 
-        // Format times (remove seconds if present)
         const formatTime = (timeString: string) => {
-          if (!timeString) return ""
-          return timeString.substring(0, 5) // Get only HH:MM part
-        }
+          if (!timeString) return "";
+          return timeString.substring(0, 5);
+        };
 
-        // Parse delivery options if it's a string, otherwise use default
-        const parseDeliveryOptions = (options: string | string[] | undefined) => {
-          if (Array.isArray(options)) return options
+        const parseDeliveryOptions = (
+          options: string | string[] | undefined
+        ) => {
+          if (Array.isArray(options)) return options;
           if (typeof options === "string") {
             try {
-              return JSON.parse(options)
+              return JSON.parse(options);
             } catch (e) {
-              return options.split(",").map((opt) => opt.trim())
+              return options.split(",").map((opt) => opt.trim());
             }
           }
-          return ["In-house"] // Default value
-        }
+          return ["In-house"];
+        };
 
-        // Set business data with proper fallbacks for missing fields
         setBusinessData({
           id: businessInfo.id,
           name: businessInfo.name || "",
-          description: businessInfo.description || "", // May not be in response
+          description: businessInfo.description || "",
           businessType: businessInfo.businessType || "",
-          contactNumber: businessInfo.contactNumber || "", // May not be in response
-          website: businessInfo.website || "", // May not be in response
-          address: businessInfo.address || "", // May not be in response
+          contactNumber: businessInfo.contactNumber || "",
+          website: businessInfo.website || "",
+          address: businessInfo.address || "",
           city: businessInfo.city || "",
-          state: businessInfo.state || "", // May not be in response
-          localGovernment: businessInfo.localGovernment || "", // May not be in response
-          latitude: businessInfo.latitude !== undefined ? Number(businessInfo.latitude) : null,
-          longitude: businessInfo.longitude !== undefined ? Number(businessInfo.longitude) : null,
+          state: businessInfo.state || "",
+          localGovernment: businessInfo.localGovernment || "",
+          latitude:
+            businessInfo.latitude !== undefined
+              ? Number(businessInfo.latitude)
+              : null,
+          longitude:
+            businessInfo.longitude !== undefined
+              ? Number(businessInfo.longitude)
+              : null,
           openingTime: formatTime(businessInfo.openingTime) || "08:00",
           closingTime: formatTime(businessInfo.closingTime) || "18:00",
-          businessDays: businessInfo.businessDays || "Monday - Friday", // May not be in response
+          businessDays: businessInfo.businessDays || "Monday - Friday",
           deliveryOptions: parseDeliveryOptions(businessInfo.deliveryOptions),
-          accountNumber: businessInfo.accountNumber || "", // May not be in response
-          bankName: businessInfo.bankName || "", // May not be in response
-          accountName: businessInfo.accountName || "", // May not be in response
-        })
+          accountNumber: businessInfo.accountNumber || "",
+          bankName: businessInfo.bankName || "",
+          bankCode: businessInfo.bankCode || "",
+          accountName: businessInfo.accountName || "",
+        });
 
-        // Set address input for autocomplete
-        setAddressInput(businessInfo.address || "")
+        setAddressInput(businessInfo.address || "");
       } catch (error) {
-        console.error("Error fetching business data:", error)
+        console.error("Error fetching business data:", error);
         setErrors({
-          general: error instanceof Error ? error.message : "Failed to fetch business data",
-        })
+          general:
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch business data",
+        });
       } finally {
-        setIsFetching(false)
+        setIsFetching(false);
       }
-    }
+    };
 
-    fetchBusinessData()
-  }, [vendor, setAddressInput])
+    fetchBusinessData();
+  }, [vendor, setAddressInput]);
 
   // Fetch business types
   useEffect(() => {
     const fetchBusinessTypes = async () => {
       try {
-        const session = getSession()
+        const session = getSession();
         if (!session?.token) {
-          throw new Error("Authentication required")
+          throw new Error("Authentication required");
         }
 
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "https://betapadi.onrender.com"}/api/groups?isActive=true`,
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "https://betapadi.onrender.com"
+          }/api/groups?isActive=true`,
           {
             headers: {
               Authorization: `Bearer ${session.token}`,
               "Content-Type": "application/json",
             },
-          },
-        )
+          }
+        );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch business types: ${response.status}`)
+          throw new Error(`Failed to fetch business types: ${response.status}`);
         }
 
-        const data = await response.json()
-        const types = data.groups?.map((item: any) => item.name) || []
-        setBusinessTypes(types)
+        const data = await response.json();
+        const types = data.groups?.map((item: any) => item.name) || [];
+        setBusinessTypes(types);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to fetch business types"
-        setErrors((prev) => ({ ...prev, businessType: errorMessage }))
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch business types";
+        setErrors((prev) => ({ ...prev, businessType: errorMessage }));
       }
+    };
+
+    fetchBusinessTypes();
+  }, []);
+
+  // Fetch banks
+  useEffect(() => {
+    const fetchBanks = async () => {
+      setIsFetchingBanks(true);
+      try {
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "https://betapadi.onrender.com"
+          }/api/banks`,
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch banks");
+        }
+
+        const data = await response.json();
+        setBanks(data.data);
+      } catch (error) {
+        setErrors((prev) => ({
+          ...prev,
+          bankName: "Failed to load banks. Please try again.",
+        }));
+      } finally {
+        setIsFetchingBanks(false);
+      }
+    };
+
+    fetchBanks();
+  }, []);
+
+  // Handle account resolution on blur
+  const handleResolveAccount = async () => {
+    if (
+      businessData.accountNumber.length !== 10 ||
+      !businessData.bankCode ||
+      isResolvingAccount
+    ) {
+      return;
     }
 
-    fetchBusinessTypes()
-  }, [])
+    setIsResolvingAccount(true);
+    try {
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "https://betapadi.onrender.com"
+        }/api/banks/resolve-account?account_number=${
+          businessData.accountNumber
+        }&bank_code=${businessData.bankCode}`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to resolve account");
+      }
+
+      const data = await response.json();
+      setBusinessData((prev) => ({
+        ...prev,
+        accountName: data.data.account_name,
+      }));
+      setErrors((prev) => ({ ...prev, accountNumber: "" }));
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        accountNumber: "Invalid account number or bank code",
+      }));
+      setBusinessData((prev) => ({ ...prev, accountName: "" }));
+    } finally {
+      setIsResolvingAccount(false);
+    }
+  };
 
   // Sync address input
   useEffect(() => {
     if (businessData.address !== addressInput) {
-      setAddressInput(businessData.address)
+      setAddressInput(businessData.address);
     }
-  }, [businessData.address, addressInput, setAddressInput])
+  }, [businessData.address, addressInput, setAddressInput]);
 
   // Handle clicks outside to close suggestions
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (addressInputRef.current && !addressInputRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false)
-        setActiveSuggestionIndex(-1)
+      if (
+        addressInputRef.current &&
+        !addressInputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+        setActiveSuggestionIndex(-1);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Apply suggested description
   useEffect(() => {
@@ -242,28 +366,48 @@ export default function BusinessSettingsPage() {
       setBusinessData((prev) => ({
         ...prev,
         description: suggestedDescription,
-      }))
-      setFetchSuggestion(false)
+      }));
+      setFetchSuggestion(false);
     }
-  }, [suggestedDescription, suggestionLoading, fetchSuggestion])
+  }, [suggestedDescription, suggestionLoading, fetchSuggestion]);
 
   // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setBusinessData((prev) => ({ ...prev, [name]: value }))
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setBusinessData((prev) => ({ ...prev, [name]: value }));
     if (name === "address") {
-      setAddressInput(value)
-      setShowSuggestions(value.trim().length > 0)
-      setActiveSuggestionIndex(-1)
+      setAddressInput(value);
+      setShowSuggestions(value.trim().length > 0);
+      setActiveSuggestionIndex(-1);
     }
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }))
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
-    // Clear success message when user makes changes
     if (successMessage) {
-      setSuccessMessage("")
+      setSuccessMessage("");
     }
-  }
+  };
+
+  // Handle bank selection
+  const handleBankChange = (value: string) => {
+    const selectedBank = banks.find((bank) => bank.name === value);
+    setBusinessData((prev) => ({
+      ...prev,
+      bankName: value,
+      bankCode: selectedBank ? selectedBank.code : "",
+      accountName: "", // Reset account name when bank changes
+    }));
+    if (errors.bankName) {
+      setErrors((prev) => ({ ...prev, bankName: "" }));
+    }
+    if (successMessage) {
+      setSuccessMessage("");
+    }
+  };
 
   // Handle delivery options
   const handleDeliveryOptionsChange = (option: string) => {
@@ -272,127 +416,167 @@ export default function BusinessSettingsPage() {
       deliveryOptions: prev.deliveryOptions.includes(option)
         ? prev.deliveryOptions.filter((o) => o !== option)
         : [...prev.deliveryOptions, option],
-    }))
-    // Clear success message when user makes changes
+    }));
     if (successMessage) {
-      setSuccessMessage("")
+      setSuccessMessage("");
     }
-  }
+  };
 
   // Handle address suggestion selection
   const handleSuggestionSelect = (suggestion: any) => {
     const formatLocalGovernment = (localGov: string) => {
-      if (!localGov) return ""
-      return localGov.replace(/\/|\s+/g, "-")
-    }
+      if (!localGov) return "";
+      return localGov.replace(/\/|\s+/g, "-");
+    };
 
     setBusinessData((prev) => ({
       ...prev,
       address: suggestion.description,
       city: formatLocalGovernment(suggestion.details?.localGovernment) || "",
       state: suggestion.details?.state || "",
-      localGovernment: formatLocalGovernment(suggestion.details?.localGovernment) || "",
-      latitude: suggestion.details?.latitude !== undefined ? Number(suggestion.details.latitude) : null,
-      longitude: suggestion.details?.longitude !== undefined ? Number(suggestion.details.longitude) : null,
-    }))
-    setAddressInput(suggestion.description)
-    setShowSuggestions(false)
-    setActiveSuggestionIndex(-1)
-    // Clear success message when user makes changes
+      localGovernment:
+        formatLocalGovernment(suggestion.details?.localGovernment) || "",
+      latitude:
+        suggestion.details?.latitude !== undefined
+          ? Number(suggestion.details.latitude)
+          : null,
+      longitude:
+        suggestion.details?.longitude !== undefined
+          ? Number(suggestion.details.longitude)
+          : null,
+    }));
+    setAddressInput(suggestion.description);
+    setShowSuggestions(false);
+    setActiveSuggestionIndex(-1);
     if (successMessage) {
-      setSuccessMessage("")
+      setSuccessMessage("");
     }
-  }
+  };
 
   // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showSuggestions || suggestions.length === 0) return
+    if (!showSuggestions || suggestions.length === 0) return;
     switch (e.key) {
       case "ArrowDown":
-        e.preventDefault()
-        setActiveSuggestionIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : prev))
-        break
+        e.preventDefault();
+        setActiveSuggestionIndex((prev) =>
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
       case "ArrowUp":
-        e.preventDefault()
-        setActiveSuggestionIndex((prev) => (prev > 0 ? prev - 1 : -1))
-        break
+        e.preventDefault();
+        setActiveSuggestionIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        break;
       case "Enter":
-        e.preventDefault()
+        e.preventDefault();
         if (activeSuggestionIndex >= 0) {
-          handleSuggestionSelect(suggestions[activeSuggestionIndex])
+          handleSuggestionSelect(suggestions[activeSuggestionIndex]);
         }
-        break
+        break;
       case "Escape":
-        setShowSuggestions(false)
-        setActiveSuggestionIndex(-1)
-        break
+        setShowSuggestions(false);
+        setActiveSuggestionIndex(-1);
+        break;
       default:
-        break
+        break;
     }
-  }
+  };
 
   // Handle description suggestion
   const handleDescriptionSuggestion = () => {
     if (!businessData.businessType) {
-      setSuggestionError("Please select a business type")
-      return
+      setSuggestionError("Please select a business type");
+      return;
     }
-    setSuggestionError(null)
-    setFetchSuggestion(true)
-  }
+    setSuggestionError(null);
+    setFetchSuggestion(true);
+  };
 
   // Validate form
   const validateForm = () => {
-    const newErrors: Record<string, string> = {}
+    const newErrors: Record<string, string> = {};
 
-    if (!businessData.name.trim()) newErrors.name = "Business name is required"
-    if (!businessData.description.trim()) newErrors.description = "Description is required"
-    if (!businessData.businessType) newErrors.businessType = "Business type is required"
-    if (!businessData.contactNumber.trim()) newErrors.contactNumber = "Contact number is required"
-    if (!businessData.address.trim()) newErrors.address = "Address is required"
-    if (!businessData.city.trim()) newErrors.city = "City is required"
-    if (!businessData.state.trim()) newErrors.state = "State is required"
-    if (!businessData.openingTime) newErrors.openingTime = "Opening time is required"
-    if (!businessData.closingTime) newErrors.closingTime = "Closing time is required"
-    if (businessData.deliveryOptions.length === 0) newErrors.deliveryOptions = "Select at least one delivery option"
+    if (!businessData.name.trim()) newErrors.name = "Business name is required";
+    if (!businessData.description.trim())
+      newErrors.description = "Description is required";
+    if (!businessData.businessType)
+      newErrors.businessType = "Business type is required";
+    if (!businessData.contactNumber.trim())
+      newErrors.contactNumber = "Contact number is required";
+    if (!businessData.address.trim()) newErrors.address = "Address is required";
+    if (!businessData.city.trim()) newErrors.city = "City is required";
+    if (!businessData.state.trim()) newErrors.state = "State is required";
+    if (!businessData.openingTime)
+      newErrors.openingTime = "Opening time is required";
+    if (!businessData.closingTime)
+      newErrors.closingTime = "Closing time is required";
+    if (businessData.deliveryOptions.length === 0)
+      newErrors.deliveryOptions = "Select at least one delivery option";
+    if (
+      businessData.latitude === null ||
+      businessData.longitude === null ||
+      isNaN(businessData.latitude) ||
+      isNaN(businessData.longitude)
+    ) {
+      newErrors.address =
+        "Please select a valid address from the dropdown to set coordinates";
+    }
+    // Optional bank details validation
+    if (
+      businessData.accountNumber &&
+      businessData.accountNumber.length !== 10
+    ) {
+      newErrors.accountNumber = "Account number must be 10 digits";
+    }
+    if (businessData.accountNumber && !businessData.bankCode) {
+      newErrors.bankName = "Please select a bank";
+    }
+    if (businessData.accountNumber && !businessData.accountName) {
+      newErrors.accountNumber = "Please resolve account name";
+    }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validateForm()) {
-      return
+      return;
     }
 
-    setIsLoading(true)
-    setErrors({})
-    setSuccessMessage("")
+    setIsLoading(true);
+    setErrors({});
+    setSuccessMessage("");
 
-    // Prepare payload
     const payload = {
       ...businessData,
-      openingTime: businessData.openingTime ? `${businessData.openingTime}:00` : undefined,
-      closingTime: businessData.closingTime ? `${businessData.closingTime}:00` : undefined,
+      openingTime: businessData.openingTime
+        ? `${businessData.openingTime}:00`
+        : undefined,
+      closingTime: businessData.closingTime
+        ? `${businessData.closingTime}:00`
+        : undefined,
       businessDays: businessData.businessDays || undefined,
       accountNumber: businessData.accountNumber || undefined,
       bankName: businessData.bankName || undefined,
+      bankCode: businessData.bankCode || undefined,
       accountName: businessData.accountName || undefined,
       isActive: true,
-    }
+    };
 
     try {
-      const session = getSession()
+      const session = getSession();
       if (!session?.token || !vendor) {
-        throw new Error("Authentication required")
+        throw new Error("Authentication required");
       }
 
-      // Use the correct API endpoint: PUT /businesses/{id}
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "https://betapadi.onrender.com"}/businesses/${businessData.id}`,
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "https://betapadi.onrender.com"
+        }/businesses/${businessData.id}`,
         {
           method: "PUT",
           headers: {
@@ -400,36 +584,34 @@ export default function BusinessSettingsPage() {
             Authorization: `Bearer ${session.token}`,
           },
           body: JSON.stringify(payload),
-        },
-      )
+        }
+      );
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || `Failed to update business: ${response.status}`)
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `Failed to update business: ${response.status}`
+        );
       }
 
-      const updatedBusiness = await response.json()
+      const updatedBusiness = await response.json();
 
-      // Update local state with the updated business data
       setBusinessData({
         ...businessData,
         ...updatedBusiness,
-      })
+      });
 
-      setSuccessMessage("Business information updated successfully!")
-
-      // Scroll to top to show success message
-      window.scrollTo({ top: 0, behavior: "smooth" })
+      setSuccessMessage("Business information updated successfully!");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to update business"
-      setErrors({ general: errorMessage })
-
-      // Scroll to top to show error message
-      window.scrollTo({ top: 0, behavior: "smooth" })
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to update business";
+      setErrors({ general: errorMessage });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (isFetching) {
     return (
@@ -439,14 +621,17 @@ export default function BusinessSettingsPage() {
           <p className="text-gray-600">Loading business information...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 p-4">
-      <div className="w-full max-w-2xl mx-auto">
+      <div className="w-full max-w-2xl mx-auto mb-24">
         <div className="flex items-center justify-between mb-6">
-          <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-gray-800">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+          >
             <ArrowLeft className="w-5 h-5" />
             Back
           </button>
@@ -454,8 +639,12 @@ export default function BusinessSettingsPage() {
             <div className="w-16 h-16 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-2">
               <Building className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">Business Settings</h1>
-            <p className="text-gray-600 text-sm">Update your business information</p>
+            <h1 className="text-xl font-bold text-gray-900">
+              Business Settings
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Update your business information
+            </p>
           </div>
           <div className="w-16"></div>
         </div>
@@ -475,7 +664,10 @@ export default function BusinessSettingsPage() {
             )}
 
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Business Name *
               </label>
               <div className="relative">
@@ -493,11 +685,16 @@ export default function BusinessSettingsPage() {
                   required
                 />
               </div>
-              {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
+              {errors.name && (
+                <p className="text-red-600 text-sm mt-1">{errors.name}</p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="businessType" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="businessType"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Business Type *
               </label>
               <select
@@ -518,12 +715,19 @@ export default function BusinessSettingsPage() {
                   </option>
                 ))}
               </select>
-              {errors.businessType && <p className="text-red-600 text-sm mt-1">{errors.businessType}</p>}
+              {errors.businessType && (
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.businessType}
+                </p>
+              )}
             </div>
 
             <div>
               <div className="flex items-center justify-between">
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Business Description *
                 </label>
                 <button
@@ -539,7 +743,9 @@ export default function BusinessSettingsPage() {
                   {suggestionLoading ? "Loading..." : "Suggest Description"}
                 </button>
               </div>
-              {suggestionError && <p className="text-red-600 text-sm mt-1">{suggestionError}</p>}
+              {suggestionError && (
+                <p className="text-red-600 text-sm mt-1">{suggestionError}</p>
+              )}
               <textarea
                 id="description"
                 name="description"
@@ -552,11 +758,18 @@ export default function BusinessSettingsPage() {
                 placeholder="Describe your business and what you offer"
                 required
               />
-              {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description}</p>}
+              {errors.description && (
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.description}
+                </p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="contactNumber" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="contactNumber"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Business Phone *
               </label>
               <div className="relative">
@@ -574,11 +787,18 @@ export default function BusinessSettingsPage() {
                   required
                 />
               </div>
-              {errors.contactNumber && <p className="text-red-600 text-sm mt-1">{errors.contactNumber}</p>}
+              {errors.contactNumber && (
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.contactNumber}
+                </p>
+              )}
             </div>
 
             <div>
-              <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="website"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Website (Optional)
               </label>
               <input
@@ -593,7 +813,10 @@ export default function BusinessSettingsPage() {
             </div>
 
             <div className="relative" ref={addressInputRef}>
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="address"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Business Address *
               </label>
               <div className="relative">
@@ -613,7 +836,11 @@ export default function BusinessSettingsPage() {
                 />
                 {(addressLoading || debouncing) && showSuggestions && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center">
-                    {debouncing && !addressLoading && <span className="text-xs text-gray-400 mr-2">Typing...</span>}
+                    {debouncing && !addressLoading && (
+                      <span className="text-xs text-gray-400 mr-2">
+                        Typing...
+                      </span>
+                    )}
                     {addressLoading && (
                       <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-600"></div>
                     )}
@@ -631,23 +858,36 @@ export default function BusinessSettingsPage() {
                       }`}
                     >
                       {suggestion.description}
-                      {!suggestion.details && <span className="text-xs text-gray-500 ml-2">(Details unavailable)</span>}
+                      {!suggestion.details && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          (Details unavailable)
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
               )}
-              {errors.address && <p className="text-red-600 text-sm mt-1">{errors.address}</p>}
-              {addressError && <p className="text-red-600 text-sm mt-1">{addressError}</p>}
-              {businessData.latitude !== null && businessData.longitude !== null && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Coordinates: Lat {businessData.latitude.toFixed(6)}, Long {businessData.longitude.toFixed(6)}
-                </p>
+              {errors.address && (
+                <p className="text-red-600 text-sm mt-1">{errors.address}</p>
               )}
+              {addressError && (
+                <p className="text-red-600 text-sm mt-1">{addressError}</p>
+              )}
+              {businessData.latitude !== null &&
+                businessData.longitude !== null && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Coordinates: Lat {businessData.latitude.toFixed(6)}, Long{" "}
+                    {businessData.longitude.toFixed(6)}
+                  </p>
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="city"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   City *
                 </label>
                 <input
@@ -662,10 +902,15 @@ export default function BusinessSettingsPage() {
                   placeholder="City"
                   required
                 />
-                {errors.city && <p className="text-red-600 text-sm mt-1">{errors.city}</p>}
+                {errors.city && (
+                  <p className="text-red-600 text-sm mt-1">{errors.city}</p>
+                )}
               </div>
               <div>
-                <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="state"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   State *
                 </label>
                 <input
@@ -680,12 +925,17 @@ export default function BusinessSettingsPage() {
                   placeholder="State"
                   required
                 />
-                {errors.state && <p className="text-red-600 text-sm mt-1">{errors.state}</p>}
+                {errors.state && (
+                  <p className="text-red-600 text-sm mt-1">{errors.state}</p>
+                )}
               </div>
             </div>
 
             <div>
-              <label htmlFor="localGovernment" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="localGovernment"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Local Government (Optional)
               </label>
               <input
@@ -701,7 +951,10 @@ export default function BusinessSettingsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="openingTime" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="openingTime"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Opening Time *
                 </label>
                 <div className="relative">
@@ -718,10 +971,17 @@ export default function BusinessSettingsPage() {
                     required
                   />
                 </div>
-                {errors.openingTime && <p className="text-red-600 text-sm mt-1">{errors.openingTime}</p>}
+                {errors.openingTime && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {errors.openingTime}
+                  </p>
+                )}
               </div>
               <div>
-                <label htmlFor="closingTime" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="closingTime"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Closing Time *
                 </label>
                 <div className="relative">
@@ -738,12 +998,19 @@ export default function BusinessSettingsPage() {
                     required
                   />
                 </div>
-                {errors.closingTime && <p className="text-red-600 text-sm mt-1">{errors.closingTime}</p>}
+                {errors.closingTime && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {errors.closingTime}
+                  </p>
+                )}
               </div>
             </div>
 
             <div>
-              <label htmlFor="businessDays" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="businessDays"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Business Days
               </label>
               <input
@@ -758,7 +1025,9 @@ export default function BusinessSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Delivery Options *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Delivery Options *
+              </label>
               <div className="grid grid-cols-3 gap-2">
                 {DELIVERY_OPTIONS.map((option) => (
                   <label key={option} className="flex items-center space-x-2">
@@ -772,45 +1041,68 @@ export default function BusinessSettingsPage() {
                   </label>
                 ))}
               </div>
-              {errors.deliveryOptions && <p className="text-red-600 text-sm mt-1">{errors.deliveryOptions}</p>}
+              {errors.deliveryOptions && (
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.deliveryOptions}
+                </p>
+              )}
             </div>
 
             <div className="border-t pt-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Bank Account Details (Optional)</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Bank Account Details (Optional)
+              </h3>
 
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="bankName" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="bankName"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Bank Name
                   </label>
-                  <input
-                    type="text"
-                    id="bankName"
-                    name="bankName"
-                    value={businessData.bankName}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors"
-                    placeholder="Enter bank name"
-                  />
+                  <div className="relative">
+                    <Select
+                      id="bankName"
+                      value={businessData.bankName || undefined}
+                      onChange={handleBankChange}
+                      disabled={isFetchingBanks || isLoading}
+                      showSearch
+                      placeholder="Search and select a bank"
+                      optionFilterProp="children"
+                      filterOption={(input, option) =>
+                        (option?.children as unknown as string)
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
+                      }
+                      className={`w-full ${
+                        errors.bankName ? "border-red-300" : ""
+                      }`}
+                      suffixIcon={
+                        isFetchingBanks ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-600"></div>
+                        ) : null
+                      }
+                    >
+                      {banks.map((bank) => (
+                        <Option key={bank.code} value={bank.name}>
+                          {bank.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </div>
+                  {errors.bankName && (
+                    <p className="text-red-600 text-sm mt-1">
+                      {errors.bankName}
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <label htmlFor="accountName" className="block text-sm font-medium text-gray-700 mb-2">
-                    Account Name
-                  </label>
-                  <input
-                    type="text"
-                    id="accountName"
-                    name="accountName"
-                    value={businessData.accountName}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors"
-                    placeholder="Enter account name"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="accountNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="accountNumber"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Account Number
                   </label>
                   <div className="relative">
@@ -821,17 +1113,48 @@ export default function BusinessSettingsPage() {
                       name="accountNumber"
                       value={businessData.accountNumber}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors"
-                      placeholder="Enter account number"
+                      onBlur={handleResolveAccount}
+                      className={`w-full px-3 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 transition-colors ${
+                        errors.accountNumber ? "border-red-300" : ""
+                      }`}
+                      placeholder="Enter 10-digit account number"
                     />
+                    {isResolvingAccount && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-orange-600"></div>
+                      </div>
+                    )}
                   </div>
+                  {errors.accountNumber && (
+                    <p className="text-red-600 text-sm mt-1">
+                      {errors.accountNumber}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="accountName"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Account Name
+                  </label>
+                  <input
+                    type="text"
+                    id="accountName"
+                    name="accountName"
+                    value={businessData.accountName}
+                    readOnly
+                    className="w-full px-3 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                    placeholder="Account name will appear here"
+                  />
                 </div>
               </div>
             </div>
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isResolvingAccount}
               className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
@@ -847,5 +1170,5 @@ export default function BusinessSettingsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

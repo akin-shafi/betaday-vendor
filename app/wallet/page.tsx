@@ -12,56 +12,68 @@ import {
   EyeOff,
   Calendar,
 } from "lucide-react";
+import { message } from "antd";
 import Footer from "@/components/footer";
+import { getSessionToken } from "@/lib/session";
+import { useAuth } from "@/providers/auth-provider";
+
+// Define types for API responses
+interface WalletBalance {
+  balance: number;
+  formattedBalance: string;
+  currency: string;
+  lastUpdated: string;
+}
+
+interface DvaDetails {
+  accountNumber: string | null;
+  bankName: string | null;
+}
+
+interface Transaction {
+  id: string;
+  walletId: string;
+  userId: string;
+  amount: string;
+  type: "credit" | "debit";
+  status: string;
+  reference: string;
+  provider: string;
+  description: string;
+  metadata: any;
+  gatewayReference: string | null;
+  gatewayStatus: string | null;
+  gatewayResponse: any;
+  orderId: string | null;
+  category: string;
+  currency: string;
+  fee: string;
+  balanceAfter: string;
+  createdAt: string;
+}
+
+interface ApiResponse<T> {
+  statusCode: number;
+  message: string;
+  data: T;
+}
 
 export default function WalletPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [showBalance, setShowBalance] = useState(true);
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(
+    null
+  );
+  const [dvaDetails, setDvaDetails] = useState<DvaDetails | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data
-  const walletData = {
-    balance: 450230.75,
-    pendingBalance: 21050.0,
-    totalEarnings: 1254300.5,
-    totalWithdrawals: 800199.75,
-  };
-
-  const transactions = [
-    {
-      id: "1",
-      type: "earning",
-      description: "Order #001 - John Doe",
-      amount: 45.5,
-      date: "2024-01-15",
-      status: "completed",
-    },
-    {
-      id: "2",
-      type: "withdrawal",
-      description: "Bank Transfer",
-      amount: -500.0,
-      date: "2024-01-14",
-      status: "completed",
-    },
-    {
-      id: "3",
-      type: "earning",
-      description: "Order #002 - Jane Smith",
-      amount: 32.0,
-      date: "2024-01-14",
-      status: "pending",
-    },
-    {
-      id: "4",
-      type: "earning",
-      description: "Order #003 - Mike Johnson",
-      amount: 78.25,
-      date: "2024-01-13",
-      status: "completed",
-    },
-  ];
+  const { vendor } = useAuth();
+  const token = getSessionToken();
+  const API_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8500";
 
   // Load balance visibility preference from localStorage on mount
   useEffect(() => {
@@ -76,24 +88,102 @@ export default function WalletPage() {
     localStorage.setItem("showWalletBalance", JSON.stringify(showBalance));
   }, [showBalance]);
 
+  // Fetch wallet data on mount and when vendor or token changes
+  useEffect(() => {
+    if (vendor?.id && token) {
+      fetchWalletData();
+    }
+  }, [vendor?.id, token]);
+
+  const fetchWalletData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch wallet balance
+      const balanceResponse = await fetch(`${API_URL}/api/wallet/balance`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!balanceResponse.ok) {
+        const errorData = await balanceResponse.json();
+        throw new Error(errorData.message || "Failed to fetch wallet balance");
+      }
+      const balanceData: ApiResponse<WalletBalance> =
+        await balanceResponse.json();
+      setWalletBalance(balanceData.data);
+
+      // Fetch DVA details
+      const dvaResponse = await fetch(`${API_URL}/api/wallet/dva-details`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!dvaResponse.ok) {
+        const errorData = await dvaResponse.json();
+        throw new Error(errorData.message || "Failed to fetch DVA details");
+      }
+      const dvaData: ApiResponse<DvaDetails> = await dvaResponse.json();
+      setDvaDetails(dvaData.data);
+
+      // Fetch transactions
+      const transactionsResponse = await fetch(
+        `${API_URL}/api/wallet/transactions?page=1&limit=20`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!transactionsResponse.ok) {
+        const errorData = await transactionsResponse.json();
+        throw new Error(errorData.message || "Failed to fetch transactions");
+      }
+      const transactionsData: ApiResponse<{ transactions: Transaction[] }> =
+        await transactionsResponse.json();
+      setTransactions(transactionsData.data.transactions);
+    } catch (err: any) {
+      const errorMessage = err.message || "Failed to load wallet data";
+      setError(errorMessage);
+      message.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleBalanceVisibility = () => {
     setShowBalance((prev) => !prev);
   };
 
-  const formatBalance = (amount: number) => {
+  const formatBalance = (amount: number | string) => {
     if (!showBalance) {
-      // Return asterisks roughly matching the length of the formatted number
-      const formattedLength = amount.toLocaleString().length;
+      const formattedLength = String(Number(amount).toLocaleString()).length;
       return "*".repeat(formattedLength);
     }
-    return `₦${amount.toLocaleString()}`;
+    return `₦${Number(amount).toLocaleString()}`;
   };
 
   const handleWithdraw = () => {
-    // TODO: Implement withdrawal logic
+    // TODO: Implement withdrawal logic with API call
     setShowWithdrawModal(false);
     setWithdrawAmount("");
+    message.success("Withdrawal request submitted successfully");
   };
+
+  // Calculate derived stats for display
+  const totalEarnings = transactions
+    .filter((t) => t.type === "credit")
+    .reduce((sum, t) => sum + Number(t.amount), 0);
+
+  const totalWithdrawals = transactions
+    .filter((t) => t.type === "debit" && t.category === "payment")
+    .reduce((sum, t) => sum + Number(t.amount), 0);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -115,38 +205,43 @@ export default function WalletPage() {
       </header>
 
       <main className="p-4 space-y-6">
+        {loading && <p className="text-center text-gray-600">Loading...</p>}
+        {error && <p className="text-center text-red-600">{error}</p>}
+
         {/* Balance Card */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-6 text-white">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <Wallet className="w-6 h-6" />
-              <span className="text-lg font-semibold">Available Balance</span>
+        {walletBalance && (
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-6 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Wallet className="w-6 h-6" />
+                <span className="text-lg font-semibold">Available Balance</span>
+              </div>
+              <button onClick={toggleBalanceVisibility} className="p-1">
+                {showBalance ? (
+                  <Eye className="w-5 h-5 opacity-75" />
+                ) : (
+                  <EyeOff className="w-5 h-5 opacity-75" />
+                )}
+              </button>
             </div>
-            <button onClick={toggleBalanceVisibility} className="p-1">
-              {showBalance ? (
-                <Eye className="w-5 h-5 opacity-75" />
-              ) : (
-                <EyeOff className="w-5 h-5 opacity-75" />
-              )}
+
+            <div className="mb-6">
+              <p className="text-3xl font-bold">
+                {formatBalance(walletBalance.balance)}
+              </p>
+              <p className="text-orange-100 text-sm mt-1">
+                Pending: {formatBalance(0)} {/* Pending balance not in API */}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowWithdrawModal(true)}
+              className="w-full bg-white text-orange-600 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors"
+            >
+              Withdraw Funds
             </button>
           </div>
-
-          <div className="mb-6">
-            <p className="text-3xl font-bold">
-              {formatBalance(walletData.balance)}
-            </p>
-            <p className="text-orange-100 text-sm mt-1">
-              Pending: {formatBalance(walletData.pendingBalance)}
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowWithdrawModal(true)}
-            className="w-full bg-white text-orange-600 py-3 rounded-lg font-semibold hover:bg-orange-50 transition-colors"
-          >
-            Withdraw Funds
-          </button>
-        </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
@@ -155,7 +250,7 @@ export default function WalletPage() {
               <div>
                 <p className="text-sm text-gray-600">Total Earnings</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatBalance(walletData.totalEarnings)}
+                  {formatBalance(totalEarnings)}
                 </p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
@@ -169,7 +264,7 @@ export default function WalletPage() {
               <div>
                 <p className="text-sm text-gray-600">Withdrawals</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {formatBalance(walletData.totalWithdrawals)}
+                  {formatBalance(totalWithdrawals)}
                 </p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -221,7 +316,7 @@ export default function WalletPage() {
                       <div className="flex items-center space-x-2 mt-1">
                         <Calendar className="w-4 h-4 text-gray-400" />
                         <p className="text-sm text-gray-600">
-                          {transaction.date}
+                          {new Date(transaction.createdAt).toLocaleDateString()}
                         </p>
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -237,13 +332,13 @@ export default function WalletPage() {
                     <div className="text-right">
                       <p
                         className={`font-semibold ${
-                          transaction.type === "earning"
+                          transaction.type === "credit"
                             ? "text-green-600"
                             : "text-red-600"
                         }`}
                       >
-                        {transaction.type === "earning" ? "+" : ""}₦
-                        {Math.abs(transaction.amount).toLocaleString()}
+                        {transaction.type === "credit" ? "+" : "-"}₦
+                        {Math.abs(Number(transaction.amount)).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -254,7 +349,7 @@ export default function WalletPage() {
             {activeTab === "withdrawals" && (
               <div className="space-y-3">
                 {transactions
-                  .filter((t) => t.type === "withdrawal")
+                  .filter((t) => t.type === "debit" && t.category === "payment")
                   .map((transaction) => (
                     <div
                       key={transaction.id}
@@ -267,13 +362,18 @@ export default function WalletPage() {
                         <div className="flex items-center space-x-2 mt-1">
                           <Calendar className="w-4 h-4 text-gray-400" />
                           <p className="text-sm text-gray-600">
-                            {transaction.date}
+                            {new Date(
+                              transaction.createdAt
+                            ).toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-red-600">
-                          ₦{Math.abs(transaction.amount).toLocaleString()}
+                          ₦
+                          {Math.abs(
+                            Number(transaction.amount)
+                          ).toLocaleString()}
                         </p>
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           {transaction.status}
@@ -288,7 +388,7 @@ export default function WalletPage() {
       </main>
 
       {/* Withdrawal Modal */}
-      {showWithdrawModal && (
+      {showWithdrawModal && walletBalance && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold text-gray-900 mb-4">
@@ -310,10 +410,10 @@ export default function WalletPage() {
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="mobile-input"
                   placeholder="Enter amount to withdraw"
-                  max={walletData.balance}
+                  max={walletBalance.balance}
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  Available: {formatBalance(walletData.balance)}
+                  Available: {formatBalance(walletBalance.balance)}
                 </p>
               </div>
 
@@ -337,7 +437,7 @@ export default function WalletPage() {
                   disabled={
                     !withdrawAmount ||
                     Number(withdrawAmount) <= 0 ||
-                    Number(withdrawAmount) > walletData.balance
+                    Number(withdrawAmount) > walletBalance.balance
                   }
                   className="flex-1 py-3 px-4 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

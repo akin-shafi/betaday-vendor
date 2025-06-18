@@ -24,7 +24,8 @@
         "react-dom": "^18",
         "react-hook-form": "^7.57.0",
         "react-phone-number-input": "^3.4.12",
-        "tailwind-merge": "^3.3.0"
+        "tailwind-merge": "^3.3.0",
+        "use-debounce": "^10.0.5"
     },
     "devDependencies": {
         "@tanstack/react-query": "^5.72.2",
