@@ -350,7 +350,7 @@ function DashboardContent() {
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Earnings</p>
+                <p className="text-sm text-gray-600">Total Sales</p>
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400" />

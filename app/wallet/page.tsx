@@ -214,7 +214,7 @@ export default function WalletPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <Wallet className="w-6 h-6" />
-                <span className="text-lg font-semibold">Available Balance</span>
+                <span className="text-lg font-semibold">Balance</span>
               </div>
               <button onClick={toggleBalanceVisibility} className="p-1">
                 {showBalance ? (
@@ -229,7 +229,7 @@ export default function WalletPage() {
               <p className="text-3xl font-bold">
                 {formatBalance(walletBalance.balance)}
               </p>
-              <p className="text-orange-100 text-sm mt-1">
+              <p className="text-orange-100 text-sm mt-1 hidden">
                 Pending: {formatBalance(0)} {/* Pending balance not in API */}
               </p>
             </div>
@@ -244,11 +244,11 @@ export default function WalletPage() {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 hidden">
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Earnings</p>
+                <p className="text-sm text-gray-600">Total Sales</p>
                 <p className="text-xl font-bold text-gray-900">
                   {formatBalance(totalEarnings)}
                 </p>
