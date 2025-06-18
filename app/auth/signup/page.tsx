@@ -30,12 +30,12 @@ export default function SignupPage() {
     watch,
   } = useForm<SignupFormValues>({
     defaultValues: {
-      firstName: "Abiola",
-      lastName: "Badmus",
-      email: "betadayfinance@gmail.com",
-      phone: "+2349163359982",
-      password: "Vendor@123",
-      confirmPassword: "Vendor@123",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
     },
   });
 
