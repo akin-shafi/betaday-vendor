@@ -4,6 +4,8 @@ import type React from "react";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Select } from "antd";
+
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -511,24 +513,77 @@ export default function CreateProductPage() {
           >
             Category *
           </label>
-          <select
+          <Select
+            showSearch
             id={`category-${index}`}
-            value={product.category}
-            onChange={(e) =>
-              handleProductChange(index, "category", e.target.value)
+            value={product.category || undefined}
+            onChange={(value) => handleProductChange(index, "category", value)}
+            className="w-full"
+            placeholder="Select category"
+            filterOption={(input, option) =>
+              (option?.label?.toString() ?? "")
+                .toLowerCase()
+                .includes(input.toLowerCase())
             }
-            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-orange-600 ${
-              errors[`${index}_category`] ? "border-red-300" : ""
-            }`}
+            options={availableCategories.map((category) => ({
+              value: category,
+              label: category,
+            }))}
             disabled={isLoading}
-          >
-            <option value="">Select category</option>
-            {availableCategories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
+            popupClassName="max-h-60 overflow-y-auto"
+            getPopupContainer={(trigger) => trigger.parentNode}
+            style={{
+              height: "40px",
+            }}
+            dropdownStyle={{
+              padding: "0",
+            }}
+            virtual={false}
+          />
+
+          <style jsx>{`
+            :global(.ant-select-selector) {
+              height: 40px !important;
+              padding: 0 11px !important;
+              border: 1px solid
+                ${errors[`${index}_category`] ? "#f87171" : "#d1d5db"} !important;
+              border-radius: 8px !important;
+              background: white !important;
+              display: flex !important;
+              align-items: center !important;
+              font-size: 16px !important;
+            }
+            :global(.ant-select-selector:hover) {
+              border-color: #f97316 !important;
+            }
+            :global(.ant-select-focused .ant-select-selector) {
+              border-color: #f97316 !important;
+              box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2) !important;
+            }
+            :global(.ant-select-selection-placeholder) {
+              color: #9ca3af !important;
+              font-size: 16px !important;
+            }
+            :global(.ant-select-selection-item) {
+              line-height: 38px !important;
+            }
+            :global(.ant-select-item-option-content) {
+              padding: 8px 12px !important;
+            }
+            :global(.ant-select-item-option-selected) {
+              background: #f3f4f6 !important;
+              font-weight: 500 !important;
+            }
+            :global(.ant-select-item-option-active) {
+              background: #f3f4f6 !important;
+            }
+            :global(.ant-select-dropdown) {
+              border-radius: 8px !important;
+              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+              border: 1px solid #e5e7eb !important;
+            }
+          `}</style>
           {errors[`${index}_category`] && (
             <p className="text-red-600 text-sm mt-1">
               {errors[`${index}_category`]}
@@ -617,7 +672,9 @@ export default function CreateProductPage() {
             Price (₦) *
           </label>
           <div className="relative">
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400">₦ </div>
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400">
+              ₦{" "}
+            </div>
             <input
               type="number"
               id={`price-${index}`}

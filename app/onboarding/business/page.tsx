@@ -477,8 +477,8 @@ export default function BusinessOnboardingPage() {
             Authorization: `Bearer ${session.token}`,
           },
           body: JSON.stringify({
-            isOnboardingComplete: true,
-            onboardingStep: 3,
+            isOnboardingComplete: false,
+            onboardingStep: 2,
           }),
         }
       );
